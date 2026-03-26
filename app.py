@@ -176,35 +176,16 @@ if uploaded_file:
     
     # Use first display column as main (usually AC Output Active Power Total)
     main_col = display_cols[0]
-    other_cols = [c for c in display_cols if c != main_col][:5]  # Up to 5 other params
     
-    # Create hover template showing all values
-    day_df_sorted = day_df.sort_values(datetime_col).copy()
+    # Prepare data - convert datetime to string for plotting
+    day_df_sorted = day_df.sort_values(datetime_col).reset_index(drop=True).copy()
     
-    # Build custom hover text
-    hover_texts = []
-    for idx, row in day_df_sorted.iterrows():
-        hover_text = f"Time: {row[datetime_col].strftime('%H:%M:%S')}<br>"
-        hover_text += f"Mode: {row[mode_col]}<br>"
-        for col in display_cols:
-            hover_text += f"{col}: {row[col]}<br>"
-        hover_texts.append(hover_text)
-    
-    # Create the main graph
-    fig_main = px.scatter(day_df_sorted, x=datetime_col, y=main_col,
-                          title=f"{main_col.replace('_', ' ').title()} - Hover to see all values",
-                          hover_data=False)
-    
-    # Update hover to show all values
-    fig_main.update_traces(hovertemplate='%{customdata}', customdata=hover_texts)
-    fig_main.update_layout(hovermode='closest')
+    # Create simple line chart with markers
+    fig_main = px.line(day_df_sorted, x=datetime_col, y=main_col,
+                       title=f"{main_col.replace('_', ' ').title()} - Hover to see all values",
+                       markers=True)
     
     st.plotly_chart(fig_main, use_container_width=True)
-    
-    # Show what each point contains
-    st.write("**Hover per point shows:**")
-    for col in display_cols:
-        st.write(f"  - {col}")
 
     # Raw Data
     with st.expander("View Raw Data"):
