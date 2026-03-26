@@ -70,8 +70,8 @@ if uploaded_file:
     # Line Mode vs Battery Mode
     # Safely handle mode column
     day_df[mode_col] = day_df[mode_col].astype(str)
-    line_records = day_df[day_df[mode_col].str.contains("line", case=False, na=False)]
-    battery_records = day_df[day_df[mode_col].str.contains("battery", case=False, na=False)]
+    line_records = day_df[day_df[mode_col].str.contains("L", case=False, na=False)]
+    battery_records = day_df[day_df[mode_col].str.contains("B", case=False, na=False)]
     
     # Calculate time in hours (assuming each record is ~1 minute based on typical inverter logs)
     line_time_hours = len(line_records) / 60  # Convert to hours
