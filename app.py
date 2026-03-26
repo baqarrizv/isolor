@@ -175,7 +175,7 @@ if uploaded_file:
         display_cols = numeric_cols[:5]
     
     # Use first display column as main (usually AC Output Active Power Total)
-    main_col = display_cols[0]
+    main_col = display_cols[17]
     
     # Prepare data - convert datetime to string for plotting
     day_df_sorted = day_df.sort_values(datetime_col).reset_index(drop=True).copy()
