@@ -153,6 +153,12 @@ if uploaded_file:
     # One comprehensive graph showing all parameters (per row, clickable with all values)
     st.header("📈 All Parameters in One Graph (Click any point to see all values)")
     
+    # Find all numeric columns
+    numeric_cols = day_df.select_dtypes(include=[np.number]).columns.tolist()
+    
+    # Remove helper columns
+    numeric_cols = [c for c in numeric_cols if c not in ['hour', 'time_diff', 'mode_numeric', 'mode_change', 'period_id']]
+    
     # Key parameters to show
     key_params = [
         'battery_voltage', 'voltage', 'inner_temperature', 'temperature',
