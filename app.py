@@ -150,14 +150,8 @@ if uploaded_file:
     fig_voltage = px.line(day_df, x=datetime_col, y=voltage_col, title="Battery Voltage Trend")
     st.plotly_chart(fig_voltage, use_container_width=True)
 
-    # Graphs for all parameters (per row, clickable)
-    st.header("📈 All Parameters Graphs (Click points for details)")
-    
-    # Find all numeric columns
-    numeric_cols = day_df.select_dtypes(include=[np.number]).columns.tolist()
-    
-    # Remove helper columns
-    numeric_cols = [c for c in numeric_cols if c not in ['hour']]
+    # One comprehensive graph showing all parameters (per row, clickable with all values)
+    st.header("📈 All Parameters in One Graph (Click any point to see all values)")
     
     # Key parameters to show
     key_params = [
@@ -174,25 +168,36 @@ if uploaded_file:
         if any(p in col_lower for p in key_params):
             display_cols.append(col)
     
-    # If no key params found, show all numeric columns
+    # If no key params found, use first 10 numeric columns
     if not display_cols:
-        display_cols = numeric_cols[:10]  # Show first 10 columns
+        display_cols = numeric_cols[:10]
     
-    for col in display_cols:
-        # Create interactive line chart for each parameter with hover info
-        fig_param = px.line(day_df.sort_values(datetime_col), x=datetime_col, y=col, 
-                           title=f"{col.replace('_', ' ').title()}",
-                           markers=True)
-        fig_param.update_traces(mode="lines+markers", marker=dict(size=6))
-        
-        # Add hover info showing time and mode
-        day_df_sorted = day_df.sort_values(datetime_col)
-        fig_param.update_layout(hovermode='x unified')
-        
-        # Add time to hover
-        fig_param.update_traces(hovertemplate=f'<b>{col}</b>: %{{y}}<extra><b>Time</b>: %{{x|%H:%M:%S}}<br><b>Mode</b>: {day_df_sorted[mode_col].values}</extra>')
-        
-        st.plotly_chart(fig_param, use_container_width=True)
+    # Prepare data for combined graph
+    day_df_sorted = day_df.sort_values(datetime_col).copy()
+    
+    # Create a melted dataframe for all parameters
+    melted_df = day_df_sorted.melt(id_vars=[datetime_col, mode_col], value_vars=display_cols, 
+                                    var_name='Parameter', value_name='Value')
+    
+    # Create the combined interactive chart
+    fig_combined = px.line(melted_df, x=datetime_col, y='Value', color='Parameter',
+                           title="All Parameters Over Time - Click points to see all values",
+                           markers=True,
+                           hover_data={datetime_col: '%H:%M:%S'})
+    fig_combined.update_layout(hovermode='closest')
+    st.plotly_chart(fig_combined, use_container_width=True)
+    
+    # Also create a scatter plot where each point shows ALL values when clicked
+    st.write("📊 Interactive Data Points - Click to see all parameter values at that time")
+    
+    # Create a simplified view for clicking
+    for idx, row in day_df_sorted.head(50).iterrows():  # Show first 50 rows for performance
+        with st.expander(f"🕐 Time: {row[datetime_col].strftime('%H:%M:%S')} | Mode: {row[mode_col]}"):
+            col_info = f"**Time:** {row[datetime_col].strftime('%H:%M:%S')} | **Mode:** {row[mode_col]}"
+            st.write(col_info)
+            st.write("**All Parameter Values:**")
+            for col in display_cols:
+                st.write(f"  - {col}: {row[col]}")
 
     # Raw Data
     with st.expander("View Raw Data"):
