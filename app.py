@@ -55,6 +55,12 @@ if uploaded_file:
 
     st.header(f"📅 Analysis for {selected_date}")
 
+    # Show all available parameters
+    st.subheader("📋 Available Parameters in Data")
+    all_cols = df.columns.tolist()
+    for i, col in enumerate(all_cols):
+        st.write(f"{i+1}. {col}")
+    
     # Show unique values in mode column for inverter users
     st.subheader("⚙️ Inverter Mode Status")
     unique_modes = day_df[mode_col].unique()
@@ -69,13 +75,30 @@ if uploaded_file:
     # Line Mode vs Battery Mode
     # Safely handle mode column
     day_df[mode_col] = day_df[mode_col].astype(str)
-    line_mode_time = len(day_df[day_df[mode_col].str.contains("line", case=False, na=False)])
-    battery_mode_time = len(day_df[day_df[mode_col].str.contains("battery", case=False, na=False)])
-
-    st.subheader("⚡ Inverter Operation Mode (Kia kar raha hai)")
+    line_records = day_df[day_df[mode_col].str.contains("line", case=False, na=False)]
+    battery_records = day_df[day_df[mode_col].str.contains("battery", case=False, na=False)]
+    
+    # Calculate time in hours (assuming each record is ~1 minute based on typical inverter logs)
+    line_time_hours = len(line_records) / 60  # Convert to hours
+    battery_time_hours = len(battery_records) / 60
+    
+    st.subheader("⚡ Inverter Operation Mode Time Calculation (Kia kar raha hai)")
+    
+    # Show as bar chart
+    mode_data = pd.DataFrame({
+        'Mode': ['Grid/Mains (Line)', 'Battery (B)'],
+        'Hours': [line_time_hours, battery_time_hours],
+        'Records': [len(line_records), len(battery_records)]
+    })
+    fig_mode = px.bar(mode_data, x='Mode', y='Hours', title="Total Time in Each Mode", color='Mode',
+                      color_discrete_map={'Grid/Mains (Line)': '#FFD700', 'Battery (B)': '#00CC96'})
+    fig_mode.update_layout(yaxis_title="Hours")
+    st.plotly_chart(fig_mode, use_container_width=True)
+    
+    # Also show as metrics
     col1, col2 = st.columns(2)
-    col1.metric("🔌 Grid/Mains Mode (Line)", f"{line_mode_time} records - Power from grid")
-    col2.metric("🔋 Battery Mode", f"{battery_mode_time} records - Power from battery")
+    col1.metric("🔌 Grid/Mains (Line) Time", f"{round(line_time_hours, 2)} hours")
+    col2.metric("🔋 Battery Mode Time", f"{round(battery_time_hours, 2)} hours")
 
     # Battery Full (near 29V)
     full_battery = day_df[(day_df[voltage_col] >= 28.5)]
@@ -88,6 +111,9 @@ if uploaded_file:
     col2.metric("Low Battery (≈0-20%)", f"{len(low_battery)} records - Voltage < 24V")
 
     # Performance Score (simple logic)
+    line_mode_time = len(line_records)
+    battery_mode_time = len(battery_records)
+    
     performance_score = (
         (len(full_battery) / len(day_df)) * 40 +
         (line_mode_time / len(day_df)) * 30 +
@@ -108,6 +134,43 @@ if uploaded_file:
     # Voltage Graph
     fig_voltage = px.line(day_df, x=datetime_col, y=voltage_col, title="Battery Voltage Trend")
     st.plotly_chart(fig_voltage, use_container_width=True)
+
+    # Graphs for all parameters (per row, clickable)
+    st.header("📈 All Parameters Graphs (Click points for details)")
+    
+    # Find all numeric columns
+    numeric_cols = day_df.select_dtypes(include=[np.number]).columns.tolist()
+    
+    # Remove helper columns
+    numeric_cols = [c for c in numeric_cols if c not in ['hour']]
+    
+    # Key parameters to show
+    key_params = [
+        'battery_voltage', 'voltage', 'inner_temperature', 'temperature',
+        'battery_charging_power', 'charging_power', 'battery_discharging_power', 'discharging_power',
+        'grid_power_input_active_total', 'grid_power', 'solar_current_input_1', 'solar_current',
+        'pv_input_voltage_1', 'pv_voltage'
+    ]
+    
+    # Filter columns that match our key parameters
+    display_cols = []
+    for col in numeric_cols:
+        col_lower = col.lower()
+        if any(p in col_lower for p in key_params):
+            display_cols.append(col)
+    
+    # If no key params found, show all numeric columns
+    if not display_cols:
+        display_cols = numeric_cols[:10]  # Show first 10 columns
+    
+    for col in display_cols:
+        # Create interactive line chart for each parameter
+        fig_param = px.line(day_df, x=datetime_col, y=col, 
+                           title=f"{col.replace('_', ' ').title()}",
+                           markers=True)
+        fig_param.update_traces(mode="lines+markers")
+        fig_param.update_layout(clickmode='event+select')
+        st.plotly_chart(fig_param, use_container_width=True)
 
     # Raw Data
     with st.expander("View Raw Data"):
