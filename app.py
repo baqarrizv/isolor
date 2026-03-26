@@ -16,13 +16,23 @@ if uploaded_file:
     # Normalize column names
     df.columns = [col.strip().lower().replace(" ", "_") for col in df.columns]
 
-    # Try to detect columns
-    datetime_col = [col for col in df.columns if "time" in col or "date" in col][0]
-    load_col = [col for col in df.columns if "load" in col][0]
-    voltage_col = [col for col in df.columns if "volt" in col][0]
-    mode_col = [col for col in df.columns if "mode" in col or "status" in col][0]
+    # Try to detect columns with error handling
+    try:
+        datetime_col = [col for col in df.columns if "time" in col or "date" in col][0]
+        load_col = [col for col in df.columns if "load" in col][0]
+        voltage_col = [col for col in df.columns if "volt" in col][0]
+        mode_col = [col for col in df.columns if "mode" in col or "status" in col][0]
+    except IndexError:
+        st.error("⚠️ Could not detect required columns. Please ensure your Excel file has columns containing: time/date, load, voltage, mode/status.")
+        st.write("**Detected columns:**", df.columns.tolist())
+        st.stop()
 
-    df[datetime_col] = pd.to_datetime(df[datetime_col])
+    df[datetime_col] = pd.to_datetime(df[datetime_col], errors='coerce')
+
+    # Check for invalid datetime values
+    if df[datetime_col].isna().all():
+        st.error("⚠️ Could not parse datetime column. Please check your data format.")
+        st.stop()
 
     df["date"] = df[datetime_col].dt.date
     df["hour"] = df[datetime_col].dt.hour
@@ -30,9 +40,18 @@ if uploaded_file:
     st.success("File Loaded Successfully ✅")
 
     # Sidebar filters
-    selected_date = st.sidebar.selectbox("Select Date", sorted(df["date"].unique()))
+    date_options = sorted(df["date"].unique())
+    if len(date_options) == 0:
+        st.error("⚠️ No valid dates found in the data.")
+        st.stop()
+    
+    selected_date = st.sidebar.selectbox("Select Date", date_options)
 
     day_df = df[df["date"] == selected_date]
+
+    if len(day_df) == 0:
+        st.warning("No data available for the selected date.")
+        st.stop()
 
     st.header(f"📅 Analysis for {selected_date}")
 
@@ -43,6 +62,8 @@ if uploaded_file:
     st.plotly_chart(fig_load, use_container_width=True)
 
     # Line Mode vs Battery Mode
+    # Safely handle mode column
+    day_df[mode_col] = day_df[mode_col].astype(str)
     line_mode_time = len(day_df[day_df[mode_col].str.contains("line", case=False, na=False)])
     battery_mode_time = len(day_df[day_df[mode_col].str.contains("battery", case=False, na=False)])
 
