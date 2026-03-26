@@ -150,15 +150,15 @@ if uploaded_file:
     fig_voltage = px.line(day_df, x=datetime_col, y=voltage_col, title="Battery Voltage Trend")
     st.plotly_chart(fig_voltage, use_container_width=True)
 
-    # Special graph for Ac Output Active Power Total - shows all values on hover
-    st.header("📊 AC Output Active Power Total & All Parameters")
+    # One main graph with AC Output Active Power Total - hover shows all values
+    st.header("📊 AC Output Active Power Total - Hover for all values")
     st.write("Hover on any point to see all parameter values at that time")
     
     # Find numeric columns
     numeric_cols = day_df.select_dtypes(include=[np.number]).columns.tolist()
     numeric_cols = [c for c in numeric_cols if c not in ['hour', 'time_diff', 'mode_numeric', 'mode_change', 'period_id']]
     
-    # Key parameters to show on hover
+    # Key parameters to show in hover
     key_params = [
         'ac_output_active_power_total', 'ac_output_load_r', 'ac_output_load_total',
         'pv_input_power_1', 'discharging_current', 'battery_voltage', 'voltage'
@@ -174,26 +174,28 @@ if uploaded_file:
     if not display_cols:
         display_cols = numeric_cols[:7]
     
+    # Main column is AC Output Active Power Total
+    main_col = None
+    for col in display_cols:
+        if 'ac_output_active_power_total' in col.lower():
+            main_col = col
+            break
+    if main_col is None:
+        main_col = display_cols[0]
+    
     # Prepare data
     day_df_sorted = day_df.sort_values(datetime_col).reset_index(drop=True).copy()
     
-    # Melt dataframe to show all parameters in one graph
-    melted_df = day_df_sorted.melt(id_vars=[datetime_col], value_vars=display_cols, 
-                                    var_name='Parameter', value_name='Value')
-    
-    # Create combined line chart with all parameters - legend shows all
-    fig_main = px.line(melted_df, x=datetime_col, y='Value', color='Parameter',
-                       title="AC Output Active Power Total & All Parameters - Hover to see all values",
+    # Create one main line chart
+    fig_main = px.line(day_df_sorted, x=datetime_col, y=main_col,
+                       title="AC Output Active Power Total",
                        markers=True)
-    
-    fig_main.update_layout(hovermode='x unified')
     
     st.plotly_chart(fig_main, use_container_width=True)
     
-    # Show which columns are in the graph
-    st.write("**Graph shows these parameters (legend):**")
-    for col in display_cols:
-        st.write(f"  - {col}")
+    # Show all parameter values in a table format below
+    st.write("**All Parameter Values (for reference):**")
+    st.dataframe(day_df_sorted[[datetime_col, mode_col] + display_cols])
 
     # Raw Data
     with st.expander("View Raw Data"):
