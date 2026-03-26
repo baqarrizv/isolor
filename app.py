@@ -55,12 +55,6 @@ if uploaded_file:
 
     st.header(f"📅 Analysis for {selected_date}")
 
-    
-    # Show unique values in mode column for inverter users
-    st.subheader("⚙️ Inverter Mode Status")
-    unique_modes = day_df[mode_col].unique()
-    st.write(f"**Modes detected:** {list(unique_modes)}")
-
     # Hourly Load
     hourly_load = day_df.groupby("hour")[load_col].mean().reset_index()
 
