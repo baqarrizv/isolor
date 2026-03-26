@@ -160,8 +160,8 @@ if uploaded_file:
     
     # Key parameters to show on hover
     key_params = [
-        'ac_output_active_power_total', 'ac_output_load_r', 'ac_output_load_total',
-        'pv_input_power_1', 'discharging_current', 'battery_voltage', 'voltage'
+        'AC Output Active Power Total', 'AC Output Load R', 'AC Output Load Total',
+        'PV Input Power 1', 'Discharging Current', 'Battery Voltage', 'Voltage'
     ]
     
     # Filter columns
