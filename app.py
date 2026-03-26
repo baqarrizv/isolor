@@ -192,18 +192,6 @@ if uploaded_file:
                            hover_data={datetime_col: '%H:%M:%S'})
     fig_combined.update_layout(hovermode='closest')
     st.plotly_chart(fig_combined, use_container_width=True)
-    
-    # Also create a scatter plot where each point shows ALL values when clicked
-    st.write("📊 Interactive Data Points - Click to see all parameter values at that time")
-    
-    # Create a simplified view for clicking
-    for idx, row in day_df_sorted.head(50).iterrows():  # Show first 50 rows for performance
-        with st.expander(f"🕐 Time: {row[datetime_col].strftime('%H:%M:%S')} | Mode: {row[mode_col]}"):
-            col_info = f"**Time:** {row[datetime_col].strftime('%H:%M:%S')} | **Mode:** {row[mode_col]}"
-            st.write(col_info)
-            st.write("**All Parameter Values:**")
-            for col in display_cols:
-                st.write(f"  - {col}: {row[col]}")
 
     # Raw Data
     with st.expander("View Raw Data"):
