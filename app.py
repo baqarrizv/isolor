@@ -160,8 +160,8 @@ if uploaded_file:
     
     # Key parameters to show on hover
     key_params = [
-        'AC Output Active Power Total', 'AC Output Load R', 'AC Output Load Total',
-        'PV Input Power 1', 'Discharging Current', 'Battery Voltage', 'Voltage'
+        'ac_output_active_power_total', 'ac_output_load_r', 'ac_output_load_total',
+        'pv_input_power_1', 'discharging_current', 'battery_voltage', 'voltage'
     ]
     
     # Filter columns
@@ -174,15 +174,25 @@ if uploaded_file:
     if not display_cols:
         display_cols = numeric_cols[:5]
     
-    # Use first display column as main (usually AC Output Active Power Total)
-    main_col = display_cols[17]
+    # Explicitly set AC Output Active Power Total as main column
+    main_col = 'ac_output_active_power_total'
     
-    # Prepare data - convert datetime to string for plotting
+    # Check if column exists
+    if main_col not in day_df.columns:
+        # Try to find it with different naming
+        for col in numeric_cols:
+            if 'ac_output_active_power' in col.lower():
+                main_col = col
+                break
+        else:
+            main_col = display_cols[0] if display_cols else numeric_cols[0]
+    
+    # Prepare data
     day_df_sorted = day_df.sort_values(datetime_col).reset_index(drop=True).copy()
     
-    # Create simple line chart with markers
+    # Create line chart with markers
     fig_main = px.line(day_df_sorted, x=datetime_col, y=main_col,
-                       title=f"{main_col.replace('_', ' ').title()} - Hover to see all values",
+                       title="AC Output Active Power Total - Hover to see all values",
                        markers=True)
     
     st.plotly_chart(fig_main, use_container_width=True)
