@@ -99,14 +99,53 @@ if uploaded_file:
     col1.metric("🔌 Grid/Mains (L) Time", f"{round(line_time_hours, 2)} hours")
     col2.metric("🔋 Battery Mode Time", f"{round(battery_time_hours, 2)} hours")
     
-    # Show mode distribution over time as a chart (per row)
+    # Show mode distribution over time as a chart (per row) with start/end times
     st.write("📊 Mode Timeline (Har Row ki value)")
     day_df['mode_numeric'] = day_df[mode_col].apply(lambda x: 1 if 'L' in str(x).upper() else 0 if 'B' in str(x).upper() else 0.5)
     fig_timeline = px.scatter(day_df, x=datetime_col, y='mode_numeric', color=mode_col, 
                                title="Mode Timeline per Row (1=Line/L, 0=Battery/B)", 
-                               color_discrete_map={'L': '#FFD700', 'B': '#00CC96'})
+                               color_discrete_map={'L': '#FFD700', 'B': '#00CC96'},
+                               hover_data=[datetime_col, mode_col])
     fig_timeline.update_layout(yaxis_title="Mode", yaxis=dict(tickvals=[0, 1], ticktext=['Battery', 'Grid/Mains']))
     st.plotly_chart(fig_timeline, use_container_width=True)
+    
+    # Calculate start/end times for each mode
+    st.write("🕐 Mode Start & End Times (Kab se kab tak)")
+    
+    # Find continuous periods of each mode
+    day_df_sorted = day_df.sort_values(datetime_col).copy()
+    day_df_sorted['mode_change'] = day_df_sorted[mode_col] != day_df_sorted[mode_col].shift(1)
+    day_df_sorted['period_id'] = day_df_sorted['mode_change'].cumsum()
+    
+    # Group by mode periods
+    mode_periods = day_df_sorted.groupby('period_id').agg({
+        datetime_col: ['min', 'max'],
+        mode_col: 'first',
+        'time_diff': 'sum'
+    }).reset_index()
+    mode_periods.columns = ['Period', 'Start Time', 'End Time', 'Mode', 'Duration (Hours)']
+    
+    # Show each period
+    for idx, row in mode_periods.iterrows():
+        mode_type = "🔌 Grid/Mains (L)" if 'L' in str(row['Mode']).upper() else "🔋 Battery (B)"
+        st.write(f"Period {idx+1}: {mode_type} | Start: {row['Start Time'].strftime('%H:%M:%S')} | End: {row['End Time'].strftime('%H:%M:%S')} | Duration: {round(row['Duration (Hours)'], 2)} hours")
+    
+    # Summary table
+    st.write("📋 Summary - Total Time in Each Mode")
+    summary_data = []
+    for mode in day_df_sorted[mode_col].unique():
+        mode_data = day_df_sorted[day_df_sorted[mode_col] == mode]
+        first_time = mode_data[datetime_col].min()
+        last_time = mode_data[datetime_col].max()
+        total_duration = mode_data['time_diff'].sum()
+        summary_data.append({
+            'Mode': mode,
+            'First Occurrence': first_time.strftime('%H:%M:%S'),
+            'Last Occurrence': last_time.strftime('%H:%M:%S'),
+            'Total Duration (Hours)': round(total_duration, 2)
+        })
+    summary_df = pd.DataFrame(summary_data)
+    st.table(summary_df)
 
     # Battery Full (near 29V)
     full_battery = day_df[(day_df[voltage_col] >= 28.5)]
