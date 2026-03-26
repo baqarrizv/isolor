@@ -55,13 +55,6 @@ if uploaded_file:
 
     st.header(f"📅 Analysis for {selected_date}")
 
-    # Show all available parameters
-    st.subheader("📋 Available Parameters in Data")
-    all_cols = df.columns.tolist()
-    st.write("**All columns in your data:**")
-    for i, col in enumerate(all_cols):
-        st.write(f"{i+1}. {col}")
-    
     # Show unique values in mode column for inverter users
     st.subheader("⚙️ Inverter Mode Status")
     unique_modes = day_df[mode_col].unique()
