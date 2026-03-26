@@ -40,7 +40,7 @@ if uploaded_file:
     st.success("File Loaded Successfully ✅")
 
     # Sidebar filters
-    date_options = sorted(df["date"].unique())
+    date_options = sorted(df["date"].unique(), reverse=True)
     if len(date_options) == 0:
         st.error("⚠️ No valid dates found in the data.")
         st.stop()
@@ -55,6 +55,18 @@ if uploaded_file:
 
     st.header(f"📅 Analysis for {selected_date}")
 
+    # Show all available parameters
+    st.subheader("📋 Available Parameters in Data")
+    all_cols = df.columns.tolist()
+    st.write("**All columns in your data:**")
+    for i, col in enumerate(all_cols):
+        st.write(f"{i+1}. {col}")
+    
+    # Show unique values in mode column for inverter users
+    st.subheader("⚙️ Inverter Mode Status")
+    unique_modes = day_df[mode_col].unique()
+    st.write(f"**Modes detected:** {list(unique_modes)}")
+
     # Hourly Load
     hourly_load = day_df.groupby("hour")[load_col].mean().reset_index()
 
@@ -67,15 +79,20 @@ if uploaded_file:
     line_mode_time = len(day_df[day_df[mode_col].str.contains("line", case=False, na=False)])
     battery_mode_time = len(day_df[day_df[mode_col].str.contains("battery", case=False, na=False)])
 
-    st.subheader("⚡ Mode Usage")
+    st.subheader("⚡ Inverter Operation Mode (Kia kar raha hai)")
     col1, col2 = st.columns(2)
-    col1.metric("Line Mode Duration", f"{line_mode_time} records")
-    col2.metric("Battery Mode Duration", f"{battery_mode_time} records")
+    col1.metric("🔌 Grid/Mains Mode (Line)", f"{line_mode_time} records - Power from grid")
+    col2.metric("🔋 Battery Mode", f"{battery_mode_time} records - Power from battery")
 
     # Battery Full (near 29V)
     full_battery = day_df[(day_df[voltage_col] >= 28.5)]
-    st.subheader("🔋 Battery Full (≈100%)")
-    st.metric("Time at Full Charge", f"{len(full_battery)} records")
+    st.subheader("🔋 Battery Status (Kitna charge hai?)")
+    col1, col2 = st.columns(2)
+    col1.metric("Full Battery (≈100%)", f"{len(full_battery)} records - Voltage ≥ 28.5V")
+    
+    # Low battery indicator
+    low_battery = day_df[(day_df[voltage_col] < 24.0)]
+    col2.metric("Low Battery (≈0-20%)", f"{len(low_battery)} records - Voltage < 24V")
 
     # Performance Score (simple logic)
     performance_score = (
@@ -84,9 +101,16 @@ if uploaded_file:
         (1 - (battery_mode_time / len(day_df))) * 30
     )
 
-    st.subheader("📊 Overall Performance Score")
+    st.subheader("📊 Inverter Performance (Kitna behtareen kaam kar raha hai)")
     st.progress(int(performance_score))
-    st.write(f"Score: {round(performance_score,2)} / 100")
+    st.write(f"**Score: {round(performance_score,2)} / 100**")
+    
+    if performance_score >= 70:
+        st.success("✅ Great performance! Inverter is working efficiently.")
+    elif performance_score >= 40:
+        st.warning("⚠️ Average performance. Check battery charging.")
+    else:
+        st.error("❌ Poor performance. Needs attention!")
 
     # Voltage Graph
     fig_voltage = px.line(day_df, x=datetime_col, y=voltage_col, title="Battery Voltage Trend")
