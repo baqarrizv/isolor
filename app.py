@@ -150,48 +150,61 @@ if uploaded_file:
     fig_voltage = px.line(day_df, x=datetime_col, y=voltage_col, title="Battery Voltage Trend")
     st.plotly_chart(fig_voltage, use_container_width=True)
 
-    # One comprehensive graph showing all parameters (per row, clickable with all values)
-    st.header("📈 All Parameters in One Graph (Click any point to see all values)")
+    # Special graph for Ac Output Active Power Total - shows all values on hover
+    st.header("📊 AC Output Active Power Total & All Parameters")
+    st.write("Click on any point to see all parameter values at that time")
     
-    # Find all numeric columns
+    # Find numeric columns
     numeric_cols = day_df.select_dtypes(include=[np.number]).columns.tolist()
-    
-    # Remove helper columns
     numeric_cols = [c for c in numeric_cols if c not in ['hour', 'time_diff', 'mode_numeric', 'mode_change', 'period_id']]
     
-    # Key parameters to show
+    # Key parameters to show on hover
     key_params = [
-        'battery_voltage', 'voltage', 'inner_temperature', 'temperature',
-        'battery_charging_power', 'charging_power', 'battery_discharging_power', 'discharging_power',
-        'grid_power_input_active_total', 'grid_power', 'solar_current_input_1', 'solar_current',
-        'pv_input_voltage_1', 'pv_voltage'
+        'ac_output_active_power_total', 'ac_output_load_r', 'ac_output_load_total',
+        'pv_input_power_1', 'discharging_current', 'battery_voltage', 'voltage'
     ]
     
-    # Filter columns that match our key parameters
+    # Filter columns
     display_cols = []
     for col in numeric_cols:
         col_lower = col.lower()
         if any(p in col_lower for p in key_params):
             display_cols.append(col)
     
-    # If no key params found, use first 10 numeric columns
     if not display_cols:
-        display_cols = numeric_cols[:10]
+        display_cols = numeric_cols[:5]
     
-    # Prepare data for combined graph
+    # Use first display column as main (usually AC Output Active Power Total)
+    main_col = display_cols[0]
+    other_cols = [c for c in display_cols if c != main_col][:5]  # Up to 5 other params
+    
+    # Create hover template showing all values
     day_df_sorted = day_df.sort_values(datetime_col).copy()
     
-    # Create a melted dataframe for all parameters
-    melted_df = day_df_sorted.melt(id_vars=[datetime_col, mode_col], value_vars=display_cols, 
-                                    var_name='Parameter', value_name='Value')
+    # Build custom hover text
+    hover_texts = []
+    for idx, row in day_df_sorted.iterrows():
+        hover_text = f"Time: {row[datetime_col].strftime('%H:%M:%S')}<br>"
+        hover_text += f"Mode: {row[mode_col]}<br>"
+        for col in display_cols:
+            hover_text += f"{col}: {row[col]}<br>"
+        hover_texts.append(hover_text)
     
-    # Create the combined interactive chart
-    fig_combined = px.line(melted_df, x=datetime_col, y='Value', color='Parameter',
-                           title="All Parameters Over Time - Click points to see all values",
-                           markers=True,
-                           hover_data={datetime_col: '%H:%M:%S'})
-    fig_combined.update_layout(hovermode='closest')
-    st.plotly_chart(fig_combined, use_container_width=True)
+    # Create the main graph
+    fig_main = px.scatter(day_df_sorted, x=datetime_col, y=main_col,
+                          title=f"{main_col.replace('_', ' ').title()} - Hover to see all values",
+                          hover_data=False)
+    
+    # Update hover to show all values
+    fig_main.update_traces(hovertemplate='%{customdata}', customdata=hover_texts)
+    fig_main.update_layout(hovermode='closest')
+    
+    st.plotly_chart(fig_main, use_container_width=True)
+    
+    # Show what each point contains
+    st.write("**Hover per point shows:**")
+    for col in display_cols:
+        st.write(f"  - {col}")
 
     # Raw Data
     with st.expander("View Raw Data"):
