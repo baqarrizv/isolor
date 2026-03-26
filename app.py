@@ -61,33 +61,52 @@ if uploaded_file:
     fig_load = px.line(hourly_load, x="hour", y=load_col, markers=True, title="Hourly Load Output")
     st.plotly_chart(fig_load, use_container_width=True)
 
-    # Line Mode vs Battery Mode
-    # Safely handle mode column
+    # Line Mode vs Battery Mode - Calculate actual time between rows
     day_df[mode_col] = day_df[mode_col].astype(str)
+    
+    # Sort by datetime to ensure proper calculation
+    day_df = day_df.sort_values(datetime_col).reset_index(drop=True)
+    
+    # Calculate time differences between consecutive rows (in hours)
+    day_df['time_diff'] = day_df[datetime_col].diff().dt.total_seconds() / 3600
+    
+    # Fill first row with a small value (assuming 1 minute interval)
+    day_df['time_diff'] = day_df['time_diff'].fillna(1/60)
+    
+    # Calculate time in each mode based on actual time between rows
     line_records = day_df[day_df[mode_col].str.contains("L", case=False, na=False)]
     battery_records = day_df[day_df[mode_col].str.contains("B", case=False, na=False)]
     
-    # Calculate time in hours (assuming each record is ~1 minute based on typical inverter logs)
-    line_time_hours = len(line_records) / 60  # Convert to hours
-    battery_time_hours = len(battery_records) / 60
+    # Sum up actual time spent in each mode
+    line_time_hours = line_records['time_diff'].sum() if len(line_records) > 0 else 0
+    battery_time_hours = battery_records['time_diff'].sum() if len(battery_records) > 0 else 0
     
     st.subheader("⚡ Inverter Operation Mode Time Calculation (Kia kar raha hai)")
     
     # Show as bar chart
     mode_data = pd.DataFrame({
-        'Mode': ['Grid/Mains (Line)', 'Battery (B)'],
+        'Mode': ['Grid/Mains (L)', 'Battery (B)'],
         'Hours': [line_time_hours, battery_time_hours],
         'Records': [len(line_records), len(battery_records)]
     })
-    fig_mode = px.bar(mode_data, x='Mode', y='Hours', title="Total Time in Each Mode", color='Mode',
-                      color_discrete_map={'Grid/Mains (Line)': '#FFD700', 'Battery (B)': '#00CC96'})
+    fig_mode = px.bar(mode_data, x='Mode', y='Hours', title="Total Time in Each Mode (Actual Time Between Rows)", color='Mode',
+                      color_discrete_map={'Grid/Mains (L)': '#FFD700', 'Battery (B)': '#00CC96'})
     fig_mode.update_layout(yaxis_title="Hours")
     st.plotly_chart(fig_mode, use_container_width=True)
     
     # Also show as metrics
     col1, col2 = st.columns(2)
-    col1.metric("🔌 Grid/Mains (Line) Time", f"{round(line_time_hours, 2)} hours")
+    col1.metric("🔌 Grid/Mains (L) Time", f"{round(line_time_hours, 2)} hours")
     col2.metric("🔋 Battery Mode Time", f"{round(battery_time_hours, 2)} hours")
+    
+    # Show mode distribution over time as a chart (per row)
+    st.write("📊 Mode Timeline (Har Row ki value)")
+    day_df['mode_numeric'] = day_df[mode_col].apply(lambda x: 1 if 'L' in str(x).upper() else 0 if 'B' in str(x).upper() else 0.5)
+    fig_timeline = px.scatter(day_df, x=datetime_col, y='mode_numeric', color=mode_col, 
+                               title="Mode Timeline per Row (1=Line/L, 0=Battery/B)", 
+                               color_discrete_map={'L': '#FFD700', 'B': '#00CC96'})
+    fig_timeline.update_layout(yaxis_title="Mode", yaxis=dict(tickvals=[0, 1], ticktext=['Battery', 'Grid/Mains']))
+    st.plotly_chart(fig_timeline, use_container_width=True)
 
     # Battery Full (near 29V)
     full_battery = day_df[(day_df[voltage_col] >= 28.5)]
