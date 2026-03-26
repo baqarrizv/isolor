@@ -152,7 +152,7 @@ if uploaded_file:
 
     # Special graph for Ac Output Active Power Total - shows all values on hover
     st.header("📊 AC Output Active Power Total & All Parameters")
-    st.write("Click on any point to see all parameter values at that time")
+    st.write("Hover on any point to see all parameter values at that time")
     
     # Find numeric columns
     numeric_cols = day_df.select_dtypes(include=[np.number]).columns.tolist()
@@ -172,30 +172,28 @@ if uploaded_file:
             display_cols.append(col)
     
     if not display_cols:
-        display_cols = numeric_cols[:5]
-    
-    # Explicitly set AC Output Active Power Total as main column
-    main_col = 'ac_output_active_power_total'
-    
-    # Check if column exists
-    if main_col not in day_df.columns:
-        # Try to find it with different naming
-        for col in numeric_cols:
-            if 'ac_output_active_power' in col.lower():
-                main_col = col
-                break
-        else:
-            main_col = display_cols[0] if display_cols else numeric_cols[0]
+        display_cols = numeric_cols[:7]
     
     # Prepare data
     day_df_sorted = day_df.sort_values(datetime_col).reset_index(drop=True).copy()
     
-    # Create line chart with markers
-    fig_main = px.line(day_df_sorted, x=datetime_col, y=main_col,
-                       title="AC Output Active Power Total - Hover to see all values",
+    # Melt dataframe to show all parameters in one graph
+    melted_df = day_df_sorted.melt(id_vars=[datetime_col], value_vars=display_cols, 
+                                    var_name='Parameter', value_name='Value')
+    
+    # Create combined line chart with all parameters - legend shows all
+    fig_main = px.line(melted_df, x=datetime_col, y='Value', color='Parameter',
+                       title="AC Output Active Power Total & All Parameters - Hover to see all values",
                        markers=True)
     
+    fig_main.update_layout(hovermode='x unified')
+    
     st.plotly_chart(fig_main, use_container_width=True)
+    
+    # Show which columns are in the graph
+    st.write("**Graph shows these parameters (legend):**")
+    for col in display_cols:
+        st.write(f"  - {col}")
 
     # Raw Data
     with st.expander("View Raw Data"):
