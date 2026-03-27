@@ -380,7 +380,7 @@ if df is not None:
         st.warning("Battery Voltage column not found")
 
     # One main graph with AC Output Active Power Total - hover shows all values
-    st.header("📊 AC Output Active Power Total (W) - Hover for all values")
+    st.header("📊 AC Output Active Power Total (W)")
     
     # Main column is AC Output Active Power Total (index 0 in key_params)
     main_col = None
