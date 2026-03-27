@@ -318,25 +318,43 @@ if df is not None:
             break
     
     if battery_col:
+        # Reorder display_cols: Battery Voltage first, then others in same order as AC Output
+        # Remove battery_col from display_cols if it exists
+        other_params = [col for col in display_cols if col.lower() != 'battery_voltage']
+        # Add battery_col at the beginning
+        battery_display_cols = [battery_col] + other_params
+        
+        # Create hover_data dict
+        battery_hover_data = {}
+        for col in battery_display_cols:
+            if col != battery_col:
+                battery_hover_data[col] = ':.2f'
+        battery_hover_data[datetime_col] = ':%H:%M:%S'
+        
         # Create battery voltage chart
         fig_battery = px.line(day_df_sorted, x=datetime_col, y=battery_col,
                              title="Battery Voltage Trend - Hover to see all parameters",
-                             markers=True)
+                             markers=True,
+                             hover_data=battery_hover_data)
         
-        # Build custom hover with key params
+        # Build custom hover with Battery Voltage first (same pattern as AC Output)
         battery_hover = f"<b>Battery Voltage (V)</b>: %{{y:.2f}}<br>"
-        for i, col in enumerate(display_cols):
-            if col != battery_col:
-                friendly = custom_labels.get(col, col)
-                battery_hover += f"<b>{friendly}</b>: %{{customdata[{i}]}}<br>"
         
+        # Add other columns after battery voltage (excluding battery_col)
+        other_battery_cols = [col for col in battery_display_cols if col != battery_col]
+        for i, col in enumerate(other_battery_cols):
+            friendly = custom_labels.get(col, col)
+            battery_hover += f"<b>{friendly}</b>: %{{customdata[{i}]}}<br>"
+        
+        # Add work_mode before Time
         if work_mode_col:
-            battery_hover += f"<b>Work Mode</b>: %{{customdata[{len([c for c in display_cols if c != battery_col])}]}}<br>"
+            battery_hover += f"<b>Work Mode</b>: %{{customdata[{len(other_battery_cols)}]}}<br>"
+        
+        # Add time (last)
         battery_hover += f"<b>Time</b>: %{{x}}"
         
-        # Prepare customdata
+        # Prepare customdata (values for other columns, excluding battery_col itself)
         battery_customdata = []
-        other_battery_cols = [c for c in display_cols if c != battery_col]
         for _, row in day_df_sorted.iterrows():
             row_data = []
             for col in other_battery_cols:
