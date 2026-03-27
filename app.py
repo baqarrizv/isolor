@@ -272,6 +272,11 @@ if df is not None:
         friendly_name = custom_labels.get(col, col)
         voltage_hover += f"<b>{friendly_name}</b>: %{{customdata[{i}]}}<br>"
     
+    # Add work_mode before Time (second to last)
+    if work_mode_col:
+        voltage_hover += f"<b>Work Mode</b>: %{{customdata[{len(other_voltage_cols)}]}}<br>"
+    
+    # Add time (last)
     voltage_hover += f"<b>Time</b>: %{{x}}"
     
     # Prepare customdata for voltage chart
@@ -285,10 +290,6 @@ if df is not None:
         if work_mode_col:
             row_data.append(str(row[work_mode_col]))
         voltage_customdata.append(tuple(row_data))
-    
-    # Add work_mode to hover template
-    if work_mode_col:
-        voltage_hover += f"<br><b>Work Mode</b>: %{{customdata[{len(other_voltage_cols)}]}}"
     
     fig_voltage.update_traces(
         hovertemplate=voltage_hover,
@@ -342,7 +343,11 @@ if df is not None:
         # Access customdata by index - need to use different approach
         hover_template += f"<b>{friendly_name}</b>: %{{customdata[{i}]}}<br>"
     
-    # Add time
+    # Add work_mode before Time (second to last)
+    if work_mode_col:
+        hover_template += f"<b>Work Mode</b>: %{{customdata[{len(other_cols)}]}}<br>"
+    
+    # Add time (last)
     hover_template += f"<b>Time</b>: %{{x}}"
     
     # Prepare customdata with all column values
@@ -356,10 +361,6 @@ if df is not None:
         if work_mode_col:
             row_data.append(str(row[work_mode_col]))
         customdata_list.append(tuple(row_data))
-    
-    # Add work_mode to hover template
-    if work_mode_col:
-        hover_template += f"<br><b>Work Mode</b>: %{{customdata[{len(other_cols)}]}}"
     
     # Update traces with custom template
     fig_main.update_traces(
