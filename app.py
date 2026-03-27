@@ -240,13 +240,37 @@ if df is not None:
             hover_data_voltage[col] = ':.2f'
     
     hover_data_voltage[datetime_col] = ':%H:%M:%S'
-    hover_data_voltage[mode_col] = True
     
     # Create voltage chart
     fig_voltage = px.line(day_df_sorted, x=datetime_col, y=voltage_col,
                          title="Battery Voltage Trend - Hover to see all parameters",
                          markers=True,
                          hover_data=hover_data_voltage)
+    
+    # Build custom hover template with friendly names for voltage chart
+    voltage_label = custom_labels.get(voltage_col, voltage_col)
+    voltage_hover = f"<b>{voltage_label}</b>: %{{y:.2f}}<br>"
+    
+    other_voltage_cols = [col for col in display_cols if col != voltage_col]
+    for i, col in enumerate(other_voltage_cols):
+        friendly_name = custom_labels.get(col, col)
+        voltage_hover += f"<b>{friendly_name}</b>: %{{customdata[{i}]}}<br>"
+    
+    voltage_hover += f"<b>Time</b>: %{{x}}"
+    
+    # Prepare customdata for voltage chart
+    voltage_customdata = []
+    for _, row in day_df_sorted.iterrows():
+        row_data = []
+        for col in other_voltage_cols:
+            val = row[col] if pd.notna(row[col]) else 0
+            row_data.append(f"{val:.2f}")
+        voltage_customdata.append(tuple(row_data))
+    
+    fig_voltage.update_traces(
+        hovertemplate=voltage_hover,
+        customdata=voltage_customdata
+    )
     
     fig_voltage.update_layout(
         hovermode='closest',
