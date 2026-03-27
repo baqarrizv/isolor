@@ -195,6 +195,7 @@ if df is not None:
         'pv_input_power_1',
         'discharging_current',
         'grid_power_input_active_total',
+        'work_mode',
         'battery_voltage'
     ]
     
@@ -206,6 +207,7 @@ if df is not None:
         'pv_input_power_1': 'PV Input Power 1 (W)',
         'discharging_current': 'Discharging Current (Amp)',
         'grid_power_input_active_total': 'Grid Power Input (W)',
+        'work_mode': 'Work Mode',
         'battery_voltage': 'Battery Voltage (V)'
     }
     
