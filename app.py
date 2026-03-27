@@ -108,43 +108,29 @@ if df is not None:
         if 'battery_voltage' in col_lower:
             battery_voltage_col = col
     
-    # Energy calculation function - calculate actual time between rows
+    # Energy calculation function - USE FIXED 5 MINUTES per row
     def calculate_daily_energy(df, datetime_col, unit_price):
         df_calc = df.copy()
         df_calc = df_calc.fillna(0)
         
-        # Sort by datetime to calculate time differences
-        df_calc = df_calc.sort_values(datetime_col)
+        # FIXED: Each row = 5 minutes = 0.0833 hours
+        time_per_row_hours = 5 / 60  # 0.0833 hours
         
-        # Calculate time difference between consecutive rows in hours
-        df_calc['time_diff_hours'] = df_calc[datetime_col].diff().dt.total_seconds() / 3600
+        st.write(f"Debug: Each row = 5 minutes = {time_per_row_hours:.4f} hours")
         
-        # First row - assume average interval if not available (use 5 min = 0.0833 hours)
-        avg_interval = df_calc['time_diff_hours'].median() if df_calc['time_diff_hours'].median() > 0 else (5/60)
-        df_calc['time_diff_hours'] = df_calc['time_diff_hours'].fillna(avg_interval)
+        # Energy (kWh) = Power (W) × time_per_row_hours / 1000
+        # FIXED FORMULA: Units = Power × (5/60) / 1000
+        df_calc['solar_kwh'] = df_calc['pv_input_power_1'] * time_per_row_hours / 1000
+        df_calc['utility_kwh'] = df_calc['grid_power_input_active_total'] * time_per_row_hours / 1000
+        df_calc['load_kwh'] = df_calc['ac_output_active_power_total'] * time_per_row_hours / 1000
         
-        # Debug info - show what we're calculating
-        st.write(f"Debug: Total rows = {len(df_calc)}")
-        st.write(f"Debug: Avg time between rows = {avg_interval:.4f} hours ({avg_interval*60:.1f} minutes)")
+        # Show raw power sums (what user calculates manually)
+        total_solar_power = df_calc['pv_input_power_1'].sum()
+        total_solar_kwh = df_calc['solar_kwh'].sum()
         
-        # Energy (kWh) = Power (W) × Time (hours) / 1000
-        df_calc['solar_kwh'] = df_calc['pv_input_power_1'] * df_calc['time_diff_hours'] / 1000
-        df_calc['utility_kwh'] = df_calc['grid_power_input_active_total'] * df_calc['time_diff_hours'] / 1000
-        df_calc['load_kwh'] = df_calc['ac_output_active_power_total'] * df_calc['time_diff_hours'] / 1000
-        
-        # Show raw power totals (not energy)
-        st.subheader("📊 Raw Power Totals (Total Power Readings)")
-        
-        raw_totals = df_calc.groupby('date').agg({
-            'pv_input_power_1': 'sum',
-            'grid_power_input_active_total': 'sum',
-            'ac_output_active_power_total': 'sum'
-        }).reset_index()
-        
-        raw_totals.columns = ['Date', 'Total Solar Power (W)', 'Total Grid Power (W)', 'Total Load Power (W)']
-        st.dataframe(raw_totals)
-        
-        st.info("💡 Ye sabhi rows ka simple sum hai (Power values ko add kiya gaya hai)")
+        st.write(f"Raw Solar Power Sum = {total_solar_power} W")
+        st.write(f"Solar kWh (using 5 min formula) = {total_solar_kwh:.2f} kWh")
+        st.write(f"Calculation: {total_solar_power} × {time_per_row_hours:.4f} / 1000 = {total_solar_kwh:.2f} kWh")
         
         # Group by date
         daily = df_calc.groupby('date').agg({
