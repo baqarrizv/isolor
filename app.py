@@ -187,10 +187,10 @@ if df is not None:
     numeric_cols = day_df.select_dtypes(include=[np.number]).columns.tolist()
     numeric_cols = [c for c in numeric_cols if c not in ['hour', 'time_diff', 'mode_numeric', 'mode_change', 'period_id']]
     
-    # Key parameters to show in hover (lowercase for matching)
+    # Key parameters to show in hover
     key_params = [
-        'ac output active power total', 'ac output load r', 'ac output load total',
-        'pv input power 1', 'discharging current', 'battery voltage', 'voltage'
+        'Ac Output Active Power Total', 'Ac Output Load R', 'Ac Output Load Total',
+        'Pv Input Power 1', 'Discharging Current', 'Battery Voltage'
     ]
     
     # Filter columns
@@ -234,25 +234,14 @@ if df is not None:
     # One main graph with AC Output Active Power Total - hover shows all values
     st.header("📊 AC Output Active Power Total - Hover for all values")
     
-    # Main column is AC Output Active Power Total - search in all columns
+    # Main column is AC Output Active Power Total
     main_col = None
-    
-    # First, search for the exact column in the original dataframe
-    for col in day_df.columns:
-        if 'Ac Output Active Power Total' in col or 'AC OUTPUT ACTIVE POWER TOTAL' in col.upper():
+    for col in display_cols:
+        if 'Ac Output Active Power Total' in col:
             main_col = col
             break
-    
-    # If not found, try to find in display_cols
     if main_col is None:
-        for col in display_cols:
-            if 'ac_output_active_power_total' in col.lower():
-                main_col = col
-                break
-    
-    # Fall back to first column if still not found
-    if main_col is None:
-        main_col = display_cols[0] if display_cols else numeric_cols[0]
+        main_col = display_cols[0]
     
     # Create hover_data dict - shows all parameters on hover
     hover_data = {}
