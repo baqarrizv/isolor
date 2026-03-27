@@ -95,7 +95,7 @@ if df is not None:
     # Hourly Load
     hourly_load = day_df.groupby("hour")[load_col].mean().reset_index()
 
-    fig_load = px.line(hourly_load, x="hour", y=load_col, markers=True, title="Hourly Load Output")
+    fig_load = px.line(hourly_load, x="hour", y=load_col, markers=True, title="Hourly Load Output % Wise")
     st.plotly_chart(fig_load, use_container_width=True)
 
     # Line Mode vs Battery Mode - Calculate actual time between rows
@@ -189,8 +189,8 @@ if df is not None:
     
     # Key parameters to show in hover
     key_params = [
-        'ac_output_active_power_total', 'ac_output_load_r', 'ac_output_load_total',
-        'pv_input_power_1', 'discharging_current', 'battery_voltage', 'voltage'
+        'AC Output Active Power Total', 'AC Output Load R', 'AC Output Load Total',
+        'PV Input Power 1', 'Discharging Current', 'Battery Voltage'
     ]
     
     # Filter columns
