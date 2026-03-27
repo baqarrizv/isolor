@@ -137,7 +137,7 @@ if df is not None:
     col2.metric("🔋 Battery Mode Time", f"{round(battery_time_hours, 2)} hours")
     
     # Show mode distribution over time as a chart (per row) with start/end times
-    st.write("📊 Mode Timeline (Har Row ki value)")
+    st.write("📊 Mode Timeline")
     day_df['mode_numeric'] = day_df[mode_col].apply(lambda x: 1 if 'L' in str(x).upper() else 0 if 'B' in str(x).upper() else 0.5)
     
     # Add time display column for hover
