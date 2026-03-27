@@ -174,7 +174,7 @@ if df is not None:
     selected_day_data = daily_energy[daily_energy['date'] == selected_date]
     if len(selected_day_data) > 0:
         selected_day = selected_day_data.iloc[0]
-        st.subheader(f"📊 ek din ka pura breakdown: {selected_day['date']}")
+        st.subheader(f"📊 Breakdown: {selected_day['date']}")
         col_a, col_b, col_c = st.columns(3)
         col_a.metric("☀️ Solar se", f"{selected_day['solar_kwh']:.2f} units")
         col_b.metric("⚡ Grid se", f"{selected_day['utility_kwh']:.2f} units")
