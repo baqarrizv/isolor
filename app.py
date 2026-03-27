@@ -2,17 +2,54 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
+import requests
+from io import BytesIO
 
 st.set_page_config(page_title="Inverter Analytics Dashboard", layout="wide")
 
-st.title("🔋 Inverter & Battery Analytics Dashboard")
-st.markdown("Upload your inverter Excel file and get detailed hourly & daily insights.")
+st.title("🔋 Inverter Analytics Dashboard")
+st.markdown("Upload your inverter Excel file or use a Google Sheet link and get detailed hourly & daily insights.")
 
-uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx", "xls"])
+# Option to choose data source - Default is Google Sheet
+data_source = st.radio("Choose Data Source:", ["🔗 Google Sheet Link", "📁 Upload Excel File"], horizontal=True, index=0)
 
-if uploaded_file:
-    df = pd.read_excel(uploaded_file)
+df = None
 
+# Default Google Sheet URL (hardcoded)
+DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1Q4FFhgtqgjMx3_E-v9OXxdPaeGf37mLRS2VmIgDUFEQ/pub?output=xlsx"
+
+if data_source == "🔗 Google Sheet Link":
+    # Google Sheet option - use hardcoded URL by default
+    use_custom_sheet = st.checkbox("Use different Google Sheet", value=False)
+    
+    if use_custom_sheet:
+        sheet_url = st.text_input("🔗 Enter Custom Google Sheet URL (Published to Web)", 
+                                  placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?output=xlsx")
+    else:
+        sheet_url = DEFAULT_SHEET_URL
+        st.info(f"📋 Using default Google Sheet")
+    
+    try:
+        # Fetch the sheet
+        response = requests.get(sheet_url)
+        response.raise_for_status()
+        
+        # Read Excel from response
+        df = pd.read_excel(BytesIO(response.content))
+        st.success("Google Sheet Loaded Successfully ✅")
+        
+    except Exception as e:
+        st.error(f"⚠️ Error loading Google Sheet: {str(e)}")
+        st.info("Make sure the sheet is published to web and you have the correct URL.")
+else:
+    # Upload Excel File option
+    uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx", "xls"])
+    
+    if uploaded_file:
+        df = pd.read_excel(uploaded_file)
+
+# Rest of the code remains the same
+if df is not None:
     # Normalize column names
     df.columns = [col.strip().lower().replace(" ", "_") for col in df.columns]
 
@@ -272,4 +309,4 @@ if uploaded_file:
         st.dataframe(day_df)
 
 else:
-    st.info("Please upload an Excel file to begin analysis.")
+    st.info("Please upload an Excel file or enter a Google Sheet link to begin analysis.")
