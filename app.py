@@ -146,40 +146,7 @@ if uploaded_file:
     else:
         st.error("❌ Poor performance. Needs attention!")
 
-    # Voltage Graph with hover showing all parameters
-    st.subheader("🔋 Battery Voltage Trend (Hover for all values)")
-    st.write("Hover on any point to see all parameter values at that time")
-    
-    # Prepare sorted data for voltage chart
-    day_df_sorted_voltage = day_df.sort_values(datetime_col).reset_index(drop=True).copy()
-    
-    # Create hover_data for voltage chart - show all key parameters
-    hover_data_voltage = {}
-    for col in display_cols:
-        if col != voltage_col:
-            hover_data_voltage[col] = ':.2f'
-    
-    hover_data_voltage[datetime_col] = ':%H:%M:%S'
-    hover_data_voltage[mode_col] = True
-    
-    # Create voltage chart
-    fig_voltage = px.line(day_df_sorted_voltage, x=datetime_col, y=voltage_col,
-                         title="Battery Voltage Trend - Hover to see all parameters",
-                         markers=True,
-                         hover_data=hover_data_voltage)
-    
-    fig_voltage.update_layout(
-        hovermode='closest',
-        hoverdistance=-1
-    )
-    
-    st.plotly_chart(fig_voltage, use_container_width=True)
-
-    # One main graph with AC Output Active Power Total - hover shows all values
-    st.header("📊 AC Output Active Power Total - Hover for all values")
-    st.write("Hover on any point to see all parameter values at that time")
-    
-    # Find numeric columns
+    # Find numeric columns - needed for both voltage and power charts
     numeric_cols = day_df.select_dtypes(include=[np.number]).columns.tolist()
     numeric_cols = [c for c in numeric_cols if c not in ['hour', 'time_diff', 'mode_numeric', 'mode_change', 'period_id']]
     
@@ -199,6 +166,39 @@ if uploaded_file:
     if not display_cols:
         display_cols = numeric_cols[:7]
     
+    # Prepare sorted data
+    day_df_sorted = day_df.sort_values(datetime_col).reset_index(drop=True).copy()
+    
+    # Voltage Graph with hover showing all parameters
+    st.subheader("🔋 Battery Voltage Trend (Hover for all values)")
+    st.write("Hover on any point to see all parameter values at that time")
+    
+    # Create hover_data for voltage chart
+    hover_data_voltage = {}
+    for col in display_cols:
+        if col != voltage_col:
+            hover_data_voltage[col] = ':.2f'
+    
+    hover_data_voltage[datetime_col] = ':%H:%M:%S'
+    hover_data_voltage[mode_col] = True
+    
+    # Create voltage chart
+    fig_voltage = px.line(day_df_sorted, x=datetime_col, y=voltage_col,
+                         title="Battery Voltage Trend - Hover to see all parameters",
+                         markers=True,
+                         hover_data=hover_data_voltage)
+    
+    fig_voltage.update_layout(
+        hovermode='closest',
+        hoverdistance=-1
+    )
+    
+    st.plotly_chart(fig_voltage, use_container_width=True)
+
+    # One main graph with AC Output Active Power Total - hover shows all values
+    st.header("📊 AC Output Active Power Total - Hover for all values")
+    st.write("Hover on any point to see all parameter values at that time")
+    
     # Main column is AC Output Active Power Total
     main_col = None
     for col in display_cols:
@@ -207,9 +207,6 @@ if uploaded_file:
             break
     if main_col is None:
         main_col = display_cols[0]
-    
-    # Prepare data
-    day_df_sorted = day_df.sort_values(datetime_col).reset_index(drop=True).copy()
     
     # Create hover_data dict - shows all parameters on hover
     hover_data = {}
@@ -238,8 +235,8 @@ if uploaded_file:
     # Show interactive chart with ALL parameters visible at once (alternative view)
     st.write("📊 **All Parameters Timeline (Hover on any point to see all values)**")
     
-    # Get all column names for display
-    all_hover_cols = [c for c in display_cols if c != main_col]
+    # Remove unused variable
+    all_hover_cols = []
     
     # Create a chart with all key parameters as lines using wide format
     fig_all_params = px.line(day_df_sorted, x=datetime_col, y=display_cols,
@@ -256,12 +253,6 @@ if uploaded_file:
             x=1
         )
     )
-    
-    # Custom hover template showing ALL parameters at that time point
-    param_template = "<b>Time:</b> %{x}<br>"
-    for i, col in enumerate(display_cols):
-        param_template += f"<b>{col}:</b> %{{y:{i}}}<br>"
-    param_template += "<extra></extra>"
     
     # For wide format, each trace has its own y value, so we show all traces
     fig_all_params.update_traces(hovertemplate="<b>%{x}</b><br>%{fullData.name}: %{y}<extra></extra>")
