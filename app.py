@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import requests
+import os
 from io import BytesIO
 
 st.set_page_config(page_title="Inverter Analytics Dashboard", layout="wide")
@@ -45,7 +46,17 @@ else:
     # Upload Excel File option
     uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx", "xls"])
     
-    if uploaded_file:
+    # Check if local file exists and load it
+    local_file = 'simplefile.xlsx'
+    if os.path.exists(local_file):
+        try:
+            df = pd.read_excel(local_file)
+            st.success(f"Loaded local file: {local_file} ✅")
+        except Exception as e:
+            st.warning(f"Could not load local file: {e}")
+            if uploaded_file:
+                df = pd.read_excel(uploaded_file)
+    elif uploaded_file:
         df = pd.read_excel(uploaded_file)
 
 # Rest of the code remains the same
@@ -91,11 +102,23 @@ if df is not None:
         st.stop()
 
     st.header(f"📅 Analysis for {selected_date}")
-
+    
+    # Option to view load as hourly average or row-wise
+    load_view_mode = st.radio("Load View Mode:", ["Hourly Average", "Row-wise (Every Entry)"], horizontal=True, index=0)
+    
+    # Sort data by datetime for row-wise view
+    day_df_sorted_load = day_df.sort_values(datetime_col).reset_index(drop=True)
+    
     # Hourly Load
-    hourly_load = day_df.groupby("hour")[load_col].mean().reset_index()
-
-    fig_load = px.line(hourly_load, x="hour", y=load_col, markers=True, title="Hourly Load Output % Wise")
+    if load_view_mode == "Hourly Average":
+        hourly_load = day_df.groupby("hour")[load_col].mean().reset_index()
+        fig_load = px.line(hourly_load, x="hour", y=load_col, markers=True, title="Hourly Load Output % Wise (Average)")
+    else:
+        # Row-wise view - show every data point sorted by time
+        row_load = day_df_sorted_load[[datetime_col, load_col]].copy()
+        fig_load = px.line(row_load, x=datetime_col, y=load_col, markers=True, title="Load Output % Wise - Every Entry (Row-wise)")
+        fig_load.update_layout(xaxis_title="Time", yaxis_title=f"Load %")
+    
     st.plotly_chart(fig_load, use_container_width=True)
 
     # Line Mode vs Battery Mode - Calculate actual time between rows
@@ -381,3 +404,4 @@ if df is not None:
 
 else:
     st.info("Please upload an Excel file or enter a Google Sheet link to begin analysis.")
+
