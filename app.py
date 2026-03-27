@@ -8,27 +8,27 @@ from io import BytesIO
 
 st.set_page_config(page_title="Inverter Analytics Dashboard", layout="wide")
 
-st.title("dY"< Inverter Analytics Dashboard")
+st.title("üîã Inverter Analytics Dashboard")
 st.markdown("Upload your inverter Excel file or use a Google Sheet link and get detailed hourly & daily insights.")
 
 # Option to choose data source - Default is Google Sheet
-data_source = st.radio("Choose Data Source:", ["dY"- Google Sheet Link", "dY"? Upload Excel File"], horizontal=True, index=0)
+data_source = st.radio("Choose Data Source:", ["üîó Google Sheet Link", "üìÅ Upload Excel File"], horizontal=True, index=0)
 
 df = None
 
 # Default Google Sheet URL (hardcoded)
 DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTy3qIf4XMXKwCzy4jhWksU5wm3KqYeqvFWVSusIehRxvn783TJwoBljQdkYiE5wETGaIsY_rSGl0P3/pub?output=xlsx"
 
-if data_source == "dY"- Google Sheet Link":
+if data_source == "üîó Google Sheet Link":
     # Google Sheet option - use hardcoded URL by default
     use_custom_sheet = st.checkbox("Use different Google Sheet", value=False)
     
     if use_custom_sheet:
-        sheet_url = st.text_input("dY"- Enter Custom Google Sheet URL (Published to Web)", 
+        sheet_url = st.text_input("üîó Enter Custom Google Sheet URL (Published to Web)", 
                                   placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?output=xlsx")
     else:
         sheet_url = DEFAULT_SHEET_URL
-        st.info(f"dY"< Using default Google Sheet")
+        st.info(f"üìã Using default Google Sheet")
     
     try:
         # Fetch the sheet
@@ -37,10 +37,10 @@ if data_source == "dY"- Google Sheet Link":
         
         # Read Excel from response
         df = pd.read_excel(BytesIO(response.content))
-        st.success("Google Sheet Loaded Successfully Éo.")
+        st.success("Google Sheet Loaded Successfully ‚úÖ")
         
     except Exception as e:
-        st.error(f"Ésˇã,? Error loading Google Sheet: {str(e)}")
+        st.error(f"‚ö†Ô∏è Error loading Google Sheet: {str(e)}")
         st.info("Make sure the sheet is published to web and you have the correct URL.")
 else:
     # Upload Excel File option
@@ -50,7 +50,7 @@ else:
     if uploaded_file is not None:
         try:
             df = pd.read_excel(uploaded_file)
-            st.success(f"Loaded uploaded file: {uploaded_file.name} Éo.")
+            st.success(f"Loaded uploaded file: {uploaded_file.name} ‚úÖ")
         except Exception as e:
             st.error(f"Error reading uploaded file: {e}")
     else:
@@ -59,7 +59,7 @@ else:
         if os.path.exists(local_file):
             try:
                 df = pd.read_excel(local_file)
-                st.success(f"Loaded local file: {local_file} Éo.")
+                st.success(f"Loaded local file: {local_file} ‚úÖ")
             except Exception as e:
                 st.warning(f"Could not load local file: {e}")
 
@@ -75,7 +75,7 @@ if df is not None:
         voltage_col = [col for col in df.columns if "volt" in col][0]
         mode_col = [col for col in df.columns if "mode" in col or "status" in col][0]
     except IndexError:
-        st.error("Ésˇã,? Could not detect required columns. Please ensure your Excel file has columns containing: time/date, load, voltage, mode/status.")
+        st.error("‚ö†Ô∏è Could not detect required columns. Please ensure your Excel file has columns containing: time/date, load, voltage, mode/status.")
         st.write("**Detected columns:**", df.columns.tolist())
         st.stop()
 
@@ -83,16 +83,16 @@ if df is not None:
 
     # Check for invalid datetime values
     if df[datetime_col].isna().all():
-        st.error("Ésˇã,? Could not parse datetime column. Please check your data format.")
+        st.error("‚ö†Ô∏è Could not parse datetime column. Please check your data format.")
         st.stop()
 
     df["date"] = df[datetime_col].dt.date
     df["hour"] = df[datetime_col].dt.hour
 
-    st.success("File Loaded Successfully Éo.")
+    st.success("File Loaded Successfully ‚úÖ")
 
     # ===== DAILY ENERGY SUMMARY SECTION =====
-    st.header("dY"S Daily Energy Summary")
+    st.header("üìä Daily Energy Summary")
 
     # Option to choose calculation method: Fixed 5 min or Average based
     calc_method = st.sidebar.radio(
@@ -103,57 +103,37 @@ if df is not None:
         help="Fixed 5 Minutes: Uses 5 min per row. Average Based: Auto-detects time interval from data (default)."
     )
 
-    # Find battery power columns - use discharging_current and battery_voltage
-    battery_current_col = None
-    battery_voltage_col = None
-    for col in df.columns:
-        col_lower = col.lower()
-        if 'discharging_current' in col_lower:
-            battery_current_col = col
-        if 'battery_voltage' in col_lower:
-            battery_voltage_col = col
-    
-    # Energy calculation function - USE FIXED 5 MINUTES per row
+    # Energy calculation function
     def calculate_daily_energy(df, datetime_col, calc_method):
         df_calc = df.copy()
         df_calc = df_calc.fillna(0)
         
         if calc_method == "Fixed 5 Minutes":
-            # FIXED: Each row = 5 minutes = 0.0833 hours
             time_per_row_hours = 5 / 60  # 0.0833 hours
-            
             st.write(f"Debug: Each row = 5 minutes = {time_per_row_hours:.4f} hours")
         else:
-            # Average Based: Auto-detect time interval from data
-            # Sort by datetime
             df_calc = df_calc.sort_values(datetime_col)
-            
-            # Calculate time differences between consecutive rows
             time_diffs = df_calc[datetime_col].diff().dropna()
             
-            # Get average time difference in minutes
             if len(time_diffs) > 0:
                 avg_minutes = time_diffs.mean().total_seconds() / 60
                 time_per_row_hours = avg_minutes / 60
                 st.write(f"Debug: Auto-detected average interval = {avg_minutes:.2f} minutes = {time_per_row_hours:.4f} hours")
             else:
-                # Fallback to 5 minutes
                 time_per_row_hours = 5 / 60
                 st.write(f"Debug: Could not detect, using fallback = 5 minutes = {time_per_row_hours:.4f} hours")
         
-        # Energy (kWh) = Power (W) A- time_per_row_hours / 1000
-        # FIXED FORMULA: Units = Power A- (5/60) / 1000
+        # Energy (kWh) = Power (W) √ó time_per_row_hours / 1000
         df_calc['solar_kwh'] = df_calc['pv_input_power_1'] * time_per_row_hours / 1000
         df_calc['utility_kwh'] = df_calc['grid_power_input_active_total'] * time_per_row_hours / 1000
         df_calc['load_kwh'] = df_calc['ac_output_active_power_total'] * time_per_row_hours / 1000
         
-        # Show raw power sums (what user calculates manually)
         total_solar_power = df_calc['pv_input_power_1'].sum()
         total_solar_kwh = df_calc['solar_kwh'].sum()
         
         st.write(f"Raw Solar Power Sum = {total_solar_power} W")
         st.write(f"Solar kWh (using {calc_method}) = {total_solar_kwh:.2f} kWh")
-        st.write(f"Calculation: {total_solar_power} A- {time_per_row_hours:.4f} / 1000 = {total_solar_kwh:.2f} kWh")
+        st.write(f"Calculation: {total_solar_power} √ó {time_per_row_hours:.4f} / 1000 = {total_solar_kwh:.2f} kWh")
         
         # Group by date
         daily = df_calc.groupby('date').agg({
@@ -185,7 +165,7 @@ if df is not None:
     # Sidebar date filter - moved before breakdown
     date_options = sorted(df["date"].unique(), reverse=True)
     if len(date_options) == 0:
-        st.error("Ésˇã,? No valid dates found in the data.")
+        st.error("‚ö†Ô∏è No valid dates found in the data.")
         st.stop()
     
     selected_date = st.sidebar.selectbox("Select Date", date_options)
@@ -194,20 +174,17 @@ if df is not None:
     selected_day_data = daily_energy[daily_energy['date'] == selected_date]
     if len(selected_day_data) > 0:
         selected_day = selected_day_data.iloc[0]
-        st.subheader(f"dY"S ek din ka pura breakdown: {selected_day['date']}")
+        st.subheader(f"üìä ek din ka pura breakdown: {selected_day['date']}")
         col_a, col_b, col_c = st.columns(3)
-        col_a.metric("É~?ã,? Solar se", f"{selected_day['solar_kwh']:.2f} units")
-        col_b.metric("És≠ Grid se", f"{selected_day['utility_kwh']:.2f} units")
-        col_c.metric("dY?ˇ Total Load", f"{selected_day['load_kwh']:.2f} units")
+        col_a.metric("‚òÄÔ∏è Solar se", f"{selected_day['solar_kwh']:.2f} units")
+        col_b.metric("‚ö° Grid se", f"{selected_day['utility_kwh']:.2f} units")
+        col_c.metric("üè† Total Load", f"{selected_day['load_kwh']:.2f} units")
 
         # Calculate percentages
         total_sources = selected_day['solar_kwh'] + selected_day['utility_kwh']
         if total_sources > 0:
-            solar_pct = (selected_day['solar_kwh'] / total_sources) * 100
-            grid_pct = (selected_day['utility_kwh'] / total_sources) * 100
-
             source_df = pd.DataFrame({
-                'Source': ['É~?ã,? Solar', 'És≠ Grid'],
+                'Source': ['‚òÄÔ∏è Solar', '‚ö° Grid'],
                 'Energy (kWh)': [selected_day['solar_kwh'], selected_day['utility_kwh']]
             })
 
@@ -219,7 +196,7 @@ if df is not None:
     fig_energy = px.bar(
         daily_energy, x='date', 
         y=['solar_kwh', 'utility_kwh', 'load_kwh'],
-        title="dY"S Daily Energy: Solar vs Grid vs Load (units)",
+        title="üìä Daily Energy: Solar vs Grid vs Load (units)",
         barmode='group',
         labels={'date': 'Date', 'value': 'Units (kWh)', 'variable': 'Type'},
         color_discrete_map={
@@ -233,21 +210,12 @@ if df is not None:
     
     # Analysis for selected date
     day_df = df[df["date"] == selected_date]
-    # Sidebar date filter - moved before breakdown
-    date_options = sorted(df["date"].unique(), reverse=True)
-    if len(date_options) == 0:
-        st.error("Ésˇã,? No valid dates found in the data.")
-        st.stop()
-    
-    selected_date = st.sidebar.selectbox("Select Date", date_options)
-
-    day_df = df[df["date"] == selected_date]
 
     if len(day_df) == 0:
         st.warning("No data available for the selected date.")
         st.stop()
 
-    st.header(f"dY". Analysis for {selected_date}")
+    st.header(f"üìÖ Analysis for {selected_date}")
     
     # Option to view load as hourly average or row-wise
     load_view_mode = st.radio("Load View Mode:", ["Hourly Average", "Row-wise (Every Entry)"], horizontal=True, index=0)
@@ -341,9 +309,9 @@ if df is not None:
     numeric_cols = day_df.select_dtypes(include=[np.number]).columns.tolist()
     numeric_cols = [c for c in numeric_cols if c not in ['hour', 'time_diff', 'mode_numeric', 'mode_change', 'period_id']]
     
-    # Key parameters to show in hover - EXACT headers from Excel file
+    # Key parameters to show in hover
     key_params = [
-        'ac_output_active_power_total',    # Main value at index 0
+        'ac_output_active_power_total',
         'ac_output_load_r',
         'ac_output_load_total',
         'pv_input_power_1',
@@ -351,10 +319,10 @@ if df is not None:
         'grid_power_input_active_total',
         'work_mode',
         'battery_voltage',
-        load_col  # Add Load %
+        load_col
     ]
     
-    # Custom display names for hover - show friendly names instead of column names
+    # Custom display names for hover
     custom_labels = {
         'ac_output_active_power_total': 'AC Output Active Power Total (W)',
         'ac_output_load_r': 'AC Output Load R (%)',
@@ -367,17 +335,16 @@ if df is not None:
         load_col: 'Load Output %'
     }
     
-    # Filter numeric columns - exact match with normalized names
+    # Filter numeric columns
     display_cols = []
     for col in numeric_cols:
         col_lower = col.lower()
         if col_lower in key_params:
             display_cols.append(col)
-        # Also add load_col
         if col == load_col and col not in display_cols:
             display_cols.append(col)
     
-    # Also check for work_mode in all columns (it's not numeric)
+    # Also check for work_mode in all columns
     work_mode_col = None
     for col in day_df.columns:
         if 'work_mode' in col.lower():
@@ -405,8 +372,8 @@ if df is not None:
             work_mode_col = col
             break
     
-    # Grid Voltage Graph with hover showing all parameters
-    st.subheader("dY"^ Grid Voltage Trend")
+    # Grid Voltage Graph
+    st.subheader("üìà Grid Voltage Trend")
     
     # Create hover_data for voltage chart
     hover_data_voltage = {}
@@ -422,50 +389,11 @@ if df is not None:
                          markers=True,
                          hover_data=hover_data_voltage)
     
-    # Build custom hover template with friendly names for voltage chart
-    voltage_label = custom_labels.get(voltage_col, voltage_col)
-    voltage_hover = f"<b>{voltage_label}</b>: %{{y:.2f}}<br>"
-    
-    other_voltage_cols = [col for col in display_cols if col != voltage_col]
-    for i, col in enumerate(other_voltage_cols):
-        friendly_name = custom_labels.get(col, col)
-        voltage_hover += f"<b>{friendly_name}</b>: %{{customdata[{i}]}}<br>"
-    
-    # Add work_mode before Time (second to last)
-    if work_mode_col:
-        voltage_hover += f"<b>Work Mode</b>: %{{customdata[{len(other_voltage_cols)}]}}<br>"
-    
-    # Add time (last)
-    voltage_hover += f"<b>Time</b>: %{{x}}"
-    
-    # Prepare customdata for voltage chart
-    voltage_customdata = []
-    for _, row in day_df_sorted.iterrows():
-        row_data = []
-        for col in other_voltage_cols:
-            val = row[col] if pd.notna(row[col]) else 0
-            row_data.append(f"{val:.2f}")
-        # Add work_mode at the end if found
-        if work_mode_col:
-            row_data.append(str(row[work_mode_col]))
-        voltage_customdata.append(tuple(row_data))
-    
-    fig_voltage.update_traces(
-        hovertemplate=voltage_hover,
-        customdata=voltage_customdata
-    )
-    
-    fig_voltage.update_layout(
-        hovermode='closest',
-        hoverdistance=-1
-    )
-    
     st.plotly_chart(fig_voltage, use_container_width=True)
     
-    # Separate Battery Voltage Graph
-    st.subheader("dY"< Battery Voltage Trend")
+    # Battery Voltage Graph
+    st.subheader("üîã Battery Voltage Trend")
     
-    # Find battery_voltage column
     battery_col = None
     for col in day_df_sorted.columns:
         if 'battery_voltage' in col.lower():
@@ -473,62 +401,16 @@ if df is not None:
             break
     
     if battery_col:
-        # Reorder display_cols: Battery Voltage first, then others in same order as AC Output
-        # Remove battery_col from display_cols if it exists
-        other_params = [col for col in display_cols if col.lower() != 'battery_voltage']
-        # Add battery_col at the beginning
-        battery_display_cols = [battery_col] + other_params
-        
-        # Create hover_data dict
-        battery_hover_data = {}
-        for col in battery_display_cols:
-            if col != battery_col:
-                battery_hover_data[col] = ':.2f'
-        battery_hover_data[datetime_col] = ':%H:%M:%S'
-        
-        # Create battery voltage chart
         fig_battery = px.line(day_df_sorted, x=datetime_col, y=battery_col,
                              title="Battery Voltage Trend",
-                             markers=True,
-                             hover_data=battery_hover_data)
-        
-        # Build custom hover with Battery Voltage first (same pattern as AC Output)
-        battery_hover = f"<b>Battery Voltage (V)</b>: %{{y:.2f}}<br>"
-        
-        # Add other columns after battery voltage (excluding battery_col)
-        other_battery_cols = [col for col in battery_display_cols if col != battery_col]
-        for i, col in enumerate(other_battery_cols):
-            friendly = custom_labels.get(col, col)
-            battery_hover += f"<b>{friendly}</b>: %{{customdata[{i}]}}<br>"
-        
-        # Add work_mode before Time
-        if work_mode_col:
-            battery_hover += f"<b>Work Mode</b>: %{{customdata[{len(other_battery_cols)}]}}<br>"
-        
-        # Add time (last)
-        battery_hover += f"<b>Time</b>: %{{x}}"
-        
-        # Prepare customdata (values for other columns, excluding battery_col itself)
-        battery_customdata = []
-        for _, row in day_df_sorted.iterrows():
-            row_data = []
-            for col in other_battery_cols:
-                val = row[col] if pd.notna(row[col]) else 0
-                row_data.append(f"{val:.2f}")
-            if work_mode_col:
-                row_data.append(str(row[work_mode_col]))
-            battery_customdata.append(tuple(row_data))
-        
-        fig_battery.update_traces(hovertemplate=battery_hover, customdata=battery_customdata)
-        fig_battery.update_layout(hovermode='closest', hoverdistance=-1)
+                             markers=True)
         st.plotly_chart(fig_battery, use_container_width=True)
     else:
         st.warning("Battery Voltage column not found")
 
-    # One main graph with AC Output Active Power Total - hover shows all values
-    st.header("dY"S AC Output Active Power Total (W)")
+    # AC Output Active Power Total
+    st.header("üìä AC Output Active Power Total (W)")
     
-    # Main column is AC Output Active Power Total (index 0 in key_params)
     main_col = None
     for col in display_cols:
         col_lower = col.lower()
@@ -536,151 +418,70 @@ if df is not None:
             main_col = col
             break
     if main_col is None and display_cols:
-        main_col = display_cols[0]  # Use first column as main if not found
+        main_col = display_cols[0]
     
-    # Create hover_data dict - shows all parameters from key_params in hover with custom labels
-    hover_data = {}
-    for col in display_cols:
-        if col != main_col:
-            hover_data[col] = ':.2f'
-    
-    # Add time to hover
-    hover_data[datetime_col] = ':%H:%M:%S'
-    
-    # Create main line chart
     fig_main = px.line(day_df_sorted, x=datetime_col, y=main_col,
                        title="AC Output Active Power Total",
-                       markers=True,
-                       hover_data=hover_data)
-    
-    # Build custom hover with friendly names - use hovertemplate
-    # Main value
-    main_label = custom_labels.get(main_col, main_col)
-    hover_template = f"<b>{main_label}</b>: %{{y:.2f}}<br>"
-    
-    # Add other columns with their friendly names and values
-    other_cols = [col for col in display_cols if col != main_col]
-    for i, col in enumerate(other_cols):
-        friendly_name = custom_labels.get(col, col)
-        # Access customdata by index - need to use different approach
-        hover_template += f"<b>{friendly_name}</b>: %{{customdata[{i}]}}<br>"
-    
-    # Add work_mode before Time (second to last)
-    if work_mode_col:
-        hover_template += f"<b>Work Mode</b>: %{{customdata[{len(other_cols)}]}}<br>"
-    
-    # Add time (last)
-    hover_template += f"<b>Time</b>: %{{x}}"
-    
-    # Prepare customdata with all column values
-    customdata_list = []
-    for _, row in day_df_sorted.iterrows():
-        row_data = []
-        for col in other_cols:
-            val = row[col] if pd.notna(row[col]) else 0
-            row_data.append(f"{val:.2f}")
-        # Add work_mode at the end if found
-        if work_mode_col:
-            row_data.append(str(row[work_mode_col]))
-        customdata_list.append(tuple(row_data))
-    
-    # Update traces with custom template
-    fig_main.update_traces(
-        hovertemplate=hover_template,
-        customdata=customdata_list
-    )
-    
-    fig_main.update_layout(
-        hovermode='closest',
-        hoverdistance=-1
-    )
-    
+                       markers=True)
     st.plotly_chart(fig_main, use_container_width=True)
 
-    # Line Mode vs Battery Mode - Calculate actual time between rows
+    # Line Mode vs Battery Mode
     day_df[mode_col] = day_df[mode_col].astype(str)
-    
-    # Sort by datetime to ensure proper calculation
     day_df = day_df.sort_values(datetime_col).reset_index(drop=True)
-    
-    # Calculate time differences between consecutive rows (in hours)
     day_df['time_diff'] = day_df[datetime_col].diff().dt.total_seconds() / 3600
-    
-    # Fill first row with a small value (assuming 1 minute interval)
     day_df['time_diff'] = day_df['time_diff'].fillna(1/60)
     
-    # Calculate time in each mode based on actual time between rows
     line_records = day_df[day_df[mode_col].str.contains("L", case=False, na=False)]
     battery_records = day_df[day_df[mode_col].str.contains("B", case=False, na=False)]
     
-    # Sum up actual time spent in each mode
     line_time_hours = line_records['time_diff'].sum() if len(line_records) > 0 else 0
     battery_time_hours = battery_records['time_diff'].sum() if len(battery_records) > 0 else 0
     
-    st.subheader("És≠ Inverter Operation Mode Time Calculation")
+    st.subheader("‚ö° Inverter Operation Mode Time Calculation")
     
-    # Show as bar chart
     mode_data = pd.DataFrame({
         'Mode': ['Grid (L)', 'Battery (B)'],
         'Hours': [line_time_hours, battery_time_hours],
         'Records': [len(line_records), len(battery_records)]
     })
-    fig_mode = px.bar(mode_data, x='Mode', y='Hours', title="Total Time in Each Mode (Actual Time Between Rows)", color='Mode',
+    fig_mode = px.bar(mode_data, x='Mode', y='Hours', title="Total Time in Each Mode", color='Mode',
                       color_discrete_map={'Grid (L)': '#FFD700', 'Battery (B)': '#00CC96'})
     fig_mode.update_layout(yaxis_title="Hours")
     st.plotly_chart(fig_mode, use_container_width=True)
     
-    # Also show as metrics
     col1, col2 = st.columns(2)
-    col1.metric("dY"O Grid (L) Time", f"{round(line_time_hours, 2)} hours")
-    col2.metric("dY"< Battery Mode Time", f"{round(battery_time_hours, 2)} hours")
-    
-    # Show mode distribution over time as a chart (per row) with start/end times
-    st.subheader("dY"S Mode Timeline")
-    day_df['mode_numeric'] = day_df[mode_col].apply(lambda x: 1 if 'L' in str(x).upper() else 0 if 'B' in str(x).upper() else 0.5)
-    
-    # Add time display column for hover
-    day_df['Time'] = day_df[datetime_col].dt.strftime('%H:%M:%S')
-    
-    fig_timeline = px.scatter(day_df, x=datetime_col, y='mode_numeric', color=mode_col, 
-                               title="Mode Timeline per Row (Click points for details)", 
-                               color_discrete_map={'L': '#FFD700', 'B': '#00CC96'},
-                               hover_data={'mode_numeric': False, 'Time': True, datetime_col: False})
-    fig_timeline.update_layout(yaxis_title="Mode", yaxis=dict(tickvals=[0, 1], ticktext=['Battery (B)', 'Grid (L)']))
-    fig_timeline.update_traces(marker=dict(size=10))
-    st.plotly_chart(fig_timeline, use_container_width=True)
-    
+    col1.metric("üîå Grid (L) Time", f"{round(line_time_hours, 2)} hours")
+    col2.metric("üîã Battery Mode Time", f"{round(battery_time_hours, 2)} hours")
 
-    # Battery Full (near 29V)
+    # Battery Status
     full_battery = day_df[(day_df[voltage_col] >= 28.5)]
-    st.subheader("dY"< Battery Status")
+    st.subheader("üîã Battery Status")
     col1, col2 = st.columns(2)
-    col1.metric("Full Battery (É%^100%)", f"{len(full_battery)} records - (V) É%ù 28.5V")
+    col1.metric("Full Battery (‚âà100%)", f"{len(full_battery)} records - (V) ‚â• 28.5V")
     
-    # Low battery indicator
     low_battery = day_df[(day_df[voltage_col] < 24.0)]
-    col2.metric("Low Battery (É%^0-20%)", f"{len(low_battery)} records - (V) < 24V")
+    col2.metric("Low Battery (‚âà0-20%)", f"{len(low_battery)} records - (V) < 24V")
 
-    # Performance Score (simple logic)
+    # Performance Score
     line_mode_time = len(line_records)
     battery_mode_time = len(battery_records)
     
     performance_score = (
-        (len(full_battery) / len(day_df)) * 40 +
-        (line_mode_time / len(day_df)) * 30 +
+        (len(full_battery) / len(day_df)) * 40 + 
+        (line_mode_time / len(day_df)) * 30 + 
         (1 - (battery_mode_time / len(day_df))) * 30
     )
 
-    st.subheader("dY"S Inverter Performance")
+    st.subheader("üìä Inverter Performance")
     st.progress(int(performance_score))
     st.write(f"**Score: {round(performance_score,2)} / 100**")
     
     if performance_score >= 70:
-        st.success("Éo. Great performance! Inverter is working efficiently.")
+        st.success("‚úÖ Great performance! Inverter is working efficiently.")
     elif performance_score >= 40:
-        st.warning("Ésˇã,? Average performance. Check battery charging.")
+        st.warning("‚ö†Ô∏è Average performance. Check battery charging.")
     else:
-        st.error("É?O Poor performance. Needs attention!")
+        st.error("‚ùå Poor performance. Needs attention!")
 
     # Raw Data
     with st.expander("View Raw Data"):
@@ -688,4 +489,3 @@ if df is not None:
 
 else:
     st.info("Please upload an Excel file or enter a Google Sheet link to begin analysis.")
-
