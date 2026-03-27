@@ -98,8 +98,18 @@ if df is not None:
         step=0.01
     )
 
+    # Find battery power columns - use discharging_current and battery_voltage
+    battery_current_col = None
+    battery_voltage_col = None
+    for col in df.columns:
+        col_lower = col.lower()
+        if 'discharging_current' in col_lower:
+            battery_current_col = col
+        if 'battery_voltage' in col_lower:
+            battery_voltage_col = col
+    
     # Energy calculation function
-    def calculate_daily_energy(df, datetime_col, unit_price):
+    def calculate_daily_energy(df, datetime_col, unit_price, battery_current_col, battery_voltage_col):
         df_calc = df.copy()
         df_calc = df_calc.fillna(0)
         
@@ -108,9 +118,21 @@ if df is not None:
         
         df_calc['solar_kwh'] = df_calc['pv_input_power_1'] * factor
         df_calc['utility_kwh'] = df_calc['grid_power_input_active_total'] * factor
-        df_calc['battery_kwh'] = df_calc['battery_power'].apply(
-            lambda x: x * factor if x < 0 else 0  # Only discharge
-        )
+        
+        # Battery power = current × voltage, only include discharge (negative current means discharging)
+        if battery_current_col and battery_voltage_col:
+            df_calc['battery_power_w'] = df_calc[battery_current_col] * df_calc[battery_voltage_col]
+            df_calc['battery_kwh'] = df_calc['battery_power_w'].apply(
+                lambda x: x * factor if x > 0 else 0  # Only charging (positive power)
+            )
+            # Also calculate discharge for reporting
+            df_calc['battery_discharge_kwh'] = df_calc['battery_power_w'].apply(
+                lambda x: abs(x) * factor if x < 0 else 0  # Only discharging (negative power)
+            )
+        else:
+            df_calc['battery_kwh'] = 0
+            df_calc['battery_discharge_kwh'] = 0
+        
         df_calc['load_kwh'] = df_calc['ac_output_active_power_total'] * factor
         
         # Group by date
@@ -118,6 +140,7 @@ if df is not None:
             'solar_kwh': 'sum',
             'utility_kwh': 'sum', 
             'battery_kwh': 'sum',
+            'battery_discharge_kwh': 'sum',
             'load_kwh': 'sum'
         }).reset_index()
         
@@ -126,17 +149,52 @@ if df is not None:
         return daily
 
     # Calculate and display
-    daily_energy = calculate_daily_energy(df, datetime_col, unit_price)
+    daily_energy = calculate_daily_energy(df, datetime_col, unit_price, battery_current_col, battery_voltage_col)
     st.dataframe(daily_energy)
 
     # Bar chart
     fig_energy = px.bar(
         daily_energy, x='date', 
         y=['solar_kwh', 'utility_kwh', 'load_kwh'],
-        title="Daily Energy: Solar vs Utility vs Load",
-        barmode='group'
+        title="Daily Energy: Solar vs Utility vs Load (kWh)",
+        barmode='group',
+        color_discrete_map={
+            'solar_kwh': '#FFD700',
+            'utility_kwh': '#1E90FF',
+            'load_kwh': '#FF6347'
+        }
     )
+    fig_energy.update_layout(yaxis_title="Energy (kWh)")
     st.plotly_chart(fig_energy, use_container_width=True)
+    
+    # Also show battery discharge chart
+    if daily_energy['battery_discharge_kwh'].sum() > 0:
+        fig_battery = px.bar(
+            daily_energy, x='date', y='battery_discharge_kwh',
+            title="Daily Battery Discharge Energy (kWh)",
+            color_discrete_sequence=['#00CC96']
+        )
+        fig_battery.update_layout(yaxis_title="Energy (kWh)")
+        st.plotly_chart(fig_battery, use_container_width=True)
+    
+    # Show savings summary
+    st.subheader("💰 Solar Savings Summary")
+    total_savings = daily_energy['savings'].sum()
+    total_solar = daily_energy['solar_kwh'].sum()
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total Solar Energy", f"{total_solar:.2f} kWh")
+    col2.metric("Total Savings", f"${total_savings:.2f}")
+    col3.metric("Avg Price/kWh", f"${unit_price:.2f}")
+    
+    # Export to CSV
+    st.subheader("📥 Export Data")
+    csv = daily_energy.to_csv(index=False)
+    st.download_button(
+        label="Download Daily Energy Summary (CSV)",
+        data=csv,
+        file_name="daily_energy_summary.csv",
+        mime="text/csv"
+    )
 
 
     # Sidebar filters
