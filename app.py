@@ -123,21 +123,39 @@ if df is not None:
         avg_interval = df_calc['time_diff_hours'].median() if df_calc['time_diff_hours'].median() > 0 else (5/60)
         df_calc['time_diff_hours'] = df_calc['time_diff_hours'].fillna(avg_interval)
         
+        # Debug info - show what we're calculating
+        st.write(f"Debug: Total rows = {len(df_calc)}")
+        st.write(f"Debug: Avg time between rows = {avg_interval:.4f} hours ({avg_interval*60:.1f} minutes)")
+        
         # Energy (kWh) = Power (W) × Time (hours) / 1000
         df_calc['solar_kwh'] = df_calc['pv_input_power_1'] * df_calc['time_diff_hours'] / 1000
         df_calc['utility_kwh'] = df_calc['grid_power_input_active_total'] * df_calc['time_diff_hours'] / 1000
         df_calc['load_kwh'] = df_calc['ac_output_active_power_total'] * df_calc['time_diff_hours'] / 1000
         
+        # Show raw power totals (not energy)
+        st.subheader("📊 Raw Power Totals (Total Power Readings)")
+        
+        raw_totals = df_calc.groupby('date').agg({
+            'pv_input_power_1': 'sum',
+            'grid_power_input_active_total': 'sum',
+            'ac_output_active_power_total': 'sum'
+        }).reset_index()
+        
+        raw_totals.columns = ['Date', 'Total Solar Power (W)', 'Total Grid Power (W)', 'Total Load Power (W)']
+        st.dataframe(raw_totals)
+        
+        st.info("💡 Ye sabhi rows ka simple sum hai (Power values ko add kiya gaya hai)")
+        
         # Group by date
         daily = df_calc.groupby('date').agg({
             'solar_kwh': 'sum',
             'utility_kwh': 'sum', 
-            'load_kwh': 'sum',
-            'time_diff_hours': 'count'  # Count number of rows/records
+            'load_kwh': 'sum'
         }).reset_index()
         
-        # Rename the count column
-        daily = daily.rename(columns={'time_diff_hours': 'total_records'})
+        # Count records per day
+        record_counts = df_calc.groupby('date').size().reset_index(name='total_records')
+        daily = daily.merge(record_counts, on='date')
         
         daily['savings'] = daily['solar_kwh'] * unit_price
         
@@ -154,7 +172,7 @@ if df is not None:
     daily_display['savings'] = daily_display['savings'].round(2)
     
     # Rename columns for better display
-    daily_display.columns = ['Date', 'Solar (kWh)', 'Grid (kWh)', 'Total Load (kWh)', 'Records', 'Solar Savings ($)']
+    daily_display.columns = ['Date', 'Solar (kWh)', 'Grid (kWh)', 'Load (kWh)', 'Records', 'Savings ($)']
     
     st.dataframe(daily_display, use_container_width=True)
     
