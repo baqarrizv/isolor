@@ -150,22 +150,81 @@ if df is not None:
 
     # Calculate and display
     daily_energy = calculate_daily_energy(df, datetime_col, unit_price, battery_current_col, battery_voltage_col)
-    st.dataframe(daily_energy)
+    
+    # Format the dataframe for better display
+    daily_display = daily_energy.copy()
+    daily_display['solar_kwh'] = daily_display['solar_kwh'].round(2)
+    daily_display['utility_kwh'] = daily_display['utility_kwh'].round(2)
+    daily_display['battery_kwh'] = daily_display['battery_kwh'].round(2)
+    daily_display['battery_discharge_kwh'] = daily_display['battery_discharge_kwh'].round(2)
+    daily_display['load_kwh'] = daily_display['load_kwh'].round(2)
+    daily_display['savings'] = daily_display['savings'].round(2)
+    
+    # Rename columns for better display
+    daily_display.columns = ['Date', 'Solar (kWh)', 'Grid (kWh)', 'Battery Charge (kWh)', 'Battery Discharge (kWh)', 'Total Load (kWh)', 'Solar Savings ($)']
+    
+    st.dataframe(daily_display, use_container_width=True)
+    
+    # Show detailed breakdown for the latest day
+    latest_day = daily_energy.iloc[-1] if len(daily_energy) > 0 else None
+    if latest_day is not None:
+        st.subheader(f"📊 Energy Breakdown for {latest_day['date']}")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("☀️ Solar Energy", f"{latest_day['solar_kwh']:.2f} kWh")
+        col2.metric("⚡ Grid Energy", f"{latest_day['utility_kwh']:.2f} kWh")
+        col3.metric("🔋 Battery Used", f"{latest_day['battery_discharge_kwh']:.2f} kWh")
+        col4.metric("🏠 Total Load", f"{latest_day['load_kwh']:.2f} kWh")
+        
+        # Calculate percentages
+        total_sources = latest_day['solar_kwh'] + latest_day['utility_kwh'] + latest_day['battery_discharge_kwh']
+        if total_sources > 0:
+            solar_pct = (latest_day['solar_kwh'] / total_sources) * 100
+            grid_pct = (latest_day['utility_kwh'] / total_sources) * 100
+            battery_pct = (latest_day['battery_discharge_kwh'] / total_sources) * 100
+            
+            st.progress(100)
+            st.write("**Energy Sources Distribution:**")
+            
+            # Create progress bars for each source
+            source_df = pd.DataFrame({
+                'Source': ['☀️ Solar', '⚡ Grid (Utility)', '🔋 Battery'],
+                'Energy (kWh)': [latest_day['solar_kwh'], latest_day['utility_kwh'], latest_day['battery_discharge_kwh']],
+                'Percentage': [solar_pct, grid_pct, battery_pct]
+            })
+            
+            fig_pie = px.pie(source_df, values='Energy (kWh)', names='Source', 
+                           title="Energy Sources Pie Chart",
+                           color='Source',
+                           color_discrete_map={'☀️ Solar': '#FFD700', '⚡ Grid (Utility)': '#1E90FF', '🔋 Battery': '#00CC96'})
+            st.plotly_chart(fig_pie, use_container_width=True)
 
-    # Bar chart
+    # Bar chart - showing all energy sources clearly
     fig_energy = px.bar(
         daily_energy, x='date', 
-        y=['solar_kwh', 'utility_kwh', 'load_kwh'],
-        title="Daily Energy: Solar vs Utility vs Load (kWh)",
+        y=['solar_kwh', 'utility_kwh', 'battery_discharge_kwh', 'load_kwh'],
+        title="📊 Daily Energy Summary: Solar vs Grid vs Battery vs Load",
         barmode='group',
+        labels={'date': 'Date', 'value': 'Energy (kWh)', 'variable': 'Energy Type'},
         color_discrete_map={
             'solar_kwh': '#FFD700',
             'utility_kwh': '#1E90FF',
+            'battery_discharge_kwh': '#00CC96',
             'load_kwh': '#FF6347'
         }
     )
     fig_energy.update_layout(yaxis_title="Energy (kWh)")
+    fig_energy.update_traces(hovertemplate='<b>%{x}</b><br>Energy: %{y:.2f} kWh<br><extra></extra>')
     st.plotly_chart(fig_energy, use_container_width=True)
+    
+    # Legend for the chart
+    st.markdown("""
+    **Chart Legend:**
+    - ☀️ **Solar (Yellow)** - Energy from solar panels
+    - ⚡ **Grid (Blue)** - Energy from utility/power grid  
+    - 🔋 **Battery (Green)** - Energy consumed from battery (discharge)
+    - 🏠 **Load (Red)** - Total energy consumed by home
+    """)
     
     # Also show battery discharge chart
     if daily_energy['battery_discharge_kwh'].sum() > 0:
@@ -188,7 +247,7 @@ if df is not None:
     
     # Export to CSV
     st.subheader("📥 Export Data")
-    csv = daily_energy.to_csv(index=False)
+    csv = daily_display.to_csv(index=False)
     st.download_button(
         label="Download Daily Energy Summary (CSV)",
         data=csv,
