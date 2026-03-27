@@ -98,6 +98,15 @@ if df is not None:
         step=0.01
     )
 
+    # Option to choose calculation method: Fixed 5 min or Average based
+    calc_method = st.sidebar.radio(
+        "Calculation Method:",
+        ["Fixed 5 Minutes", "Average Based"],
+        index=1,
+        horizontal=True,
+        help="Fixed 5 Minutes: Uses 5 min per row. Average Based: Auto-detects time interval from data (default)."
+    )
+
     # Find battery power columns - use discharging_current and battery_voltage
     battery_current_col = None
     battery_voltage_col = None
@@ -109,14 +118,32 @@ if df is not None:
             battery_voltage_col = col
     
     # Energy calculation function - USE FIXED 5 MINUTES per row
-    def calculate_daily_energy(df, datetime_col, unit_price):
+    def calculate_daily_energy(df, datetime_col, unit_price, calc_method):
         df_calc = df.copy()
         df_calc = df_calc.fillna(0)
         
-        # FIXED: Each row = 5 minutes = 0.0833 hours
-        time_per_row_hours = 5 / 60  # 0.0833 hours
-        
-        st.write(f"Debug: Each row = 5 minutes = {time_per_row_hours:.4f} hours")
+        if calc_method == "Fixed 5 Minutes":
+            # FIXED: Each row = 5 minutes = 0.0833 hours
+            time_per_row_hours = 5 / 60  # 0.0833 hours
+            
+            st.write(f"Debug: Each row = 5 minutes = {time_per_row_hours:.4f} hours")
+        else:
+            # Average Based: Auto-detect time interval from data
+            # Sort by datetime
+            df_calc = df_calc.sort_values(datetime_col)
+            
+            # Calculate time differences between consecutive rows
+            time_diffs = df_calc[datetime_col].diff().dropna()
+            
+            # Get average time difference in minutes
+            if len(time_diffs) > 0:
+                avg_minutes = time_diffs.mean().total_seconds() / 60
+                time_per_row_hours = avg_minutes / 60
+                st.write(f"Debug: Auto-detected average interval = {avg_minutes:.2f} minutes = {time_per_row_hours:.4f} hours")
+            else:
+                # Fallback to 5 minutes
+                time_per_row_hours = 5 / 60
+                st.write(f"Debug: Could not detect, using fallback = 5 minutes = {time_per_row_hours:.4f} hours")
         
         # Energy (kWh) = Power (W) × time_per_row_hours / 1000
         # FIXED FORMULA: Units = Power × (5/60) / 1000
@@ -129,7 +156,7 @@ if df is not None:
         total_solar_kwh = df_calc['solar_kwh'].sum()
         
         st.write(f"Raw Solar Power Sum = {total_solar_power} W")
-        st.write(f"Solar kWh (using 5 min formula) = {total_solar_kwh:.2f} kWh")
+        st.write(f"Solar kWh (using {calc_method}) = {total_solar_kwh:.2f} kWh")
         st.write(f"Calculation: {total_solar_power} × {time_per_row_hours:.4f} / 1000 = {total_solar_kwh:.2f} kWh")
         
         # Group by date
@@ -148,7 +175,7 @@ if df is not None:
         return daily
 
     # Calculate and display
-    daily_energy = calculate_daily_energy(df, datetime_col, unit_price)
+    daily_energy = calculate_daily_energy(df, datetime_col, unit_price, calc_method)
     
     # Format the dataframe for better display
     daily_display = daily_energy.copy()
@@ -170,8 +197,6 @@ if df is not None:
         col_a.metric("☀️ Solar se", f"{latest_day['solar_kwh']:.2f} units")
         col_b.metric("⚡ Grid se", f"{latest_day['utility_kwh']:.2f} units")
         col_c.metric("🏠 Total Load", f"{latest_day['load_kwh']:.2f} units")
-        
-        st.success(f"📊 {latest_day['date']} ko: {latest_day['load_kwh']:.2f} units use hue. ☀️ {latest_day['solar_kwh']:.2f} solar se, ⚡ {latest_day['utility_kwh']:.2f} grid se.")
         
         # Calculate percentages
         total_sources = latest_day['solar_kwh'] + latest_day['utility_kwh']
