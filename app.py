@@ -175,7 +175,6 @@ if df is not None:
             solar_pct = (latest_day['solar_kwh'] / total_sources) * 100
             grid_pct = (latest_day['utility_kwh'] / total_sources) * 100
             
-            st.write("---Energy Sources:---")
             source_df = pd.DataFrame({
                 'Source': ['☀️ Solar', '⚡ Grid'],
                 'Energy (kWh)': [latest_day['solar_kwh'], latest_day['utility_kwh']]
