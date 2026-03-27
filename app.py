@@ -241,7 +241,7 @@ if df is not None:
             main_col = col
             break
     if main_col is None:
-        main_col = display_cols[17]
+        main_col = display_cols[0]
     
     # Create hover_data dict - shows all parameters on hover
     hover_data = {}
