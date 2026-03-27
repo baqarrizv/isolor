@@ -272,7 +272,7 @@ if df is not None:
     
     # Create voltage chart
     fig_voltage = px.line(day_df_sorted, x=datetime_col, y=voltage_col,
-                         title="Grid Voltage Trend - Hover to see all parameters",
+                         title="Grid Voltage Trend",
                          markers=True,
                          hover_data=hover_data_voltage)
     
@@ -342,7 +342,7 @@ if df is not None:
         
         # Create battery voltage chart
         fig_battery = px.line(day_df_sorted, x=datetime_col, y=battery_col,
-                             title="Battery Voltage Trend - Hover to see all parameters",
+                             title="Battery Voltage Trend",
                              markers=True,
                              hover_data=battery_hover_data)
         
@@ -403,7 +403,7 @@ if df is not None:
     
     # Create main line chart
     fig_main = px.line(day_df_sorted, x=datetime_col, y=main_col,
-                       title="AC Output Active Power Total - Hover to see all parameters",
+                       title="AC Output Active Power Total",
                        markers=True,
                        hover_data=hover_data)
     
@@ -490,7 +490,7 @@ if df is not None:
     col2.metric("🔋 Battery Mode Time", f"{round(battery_time_hours, 2)} hours")
     
     # Show mode distribution over time as a chart (per row) with start/end times
-    st.write("📊 Mode Timeline")
+    st.subheader("📊 Mode Timeline")
     day_df['mode_numeric'] = day_df[mode_col].apply(lambda x: 1 if 'L' in str(x).upper() else 0 if 'B' in str(x).upper() else 0.5)
     
     # Add time display column for hover
@@ -509,11 +509,11 @@ if df is not None:
     full_battery = day_df[(day_df[voltage_col] >= 28.5)]
     st.subheader("🔋 Battery Status")
     col1, col2 = st.columns(2)
-    col1.metric("Full Battery (≈100%)", f"{len(full_battery)} records - Voltage ≥ 28.5V")
+    col1.metric("Full Battery (≈100%)", f"{len(full_battery)} records - (V) ≥ 28.5V")
     
     # Low battery indicator
     low_battery = day_df[(day_df[voltage_col] < 24.0)]
-    col2.metric("Low Battery (≈0-20%)", f"{len(low_battery)} records - Voltage < 24V")
+    col2.metric("Low Battery (≈0-20%)", f"{len(low_battery)} records - (V) < 24V")
 
     # Performance Score (simple logic)
     line_mode_time = len(line_records)
