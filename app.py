@@ -187,19 +187,31 @@ if df is not None:
     numeric_cols = day_df.select_dtypes(include=[np.number]).columns.tolist()
     numeric_cols = [c for c in numeric_cols if c not in ['hour', 'time_diff', 'mode_numeric', 'mode_change', 'period_id']]
     
-    # Key parameters to show in hover
+    # Key parameters to show in hover - EXACT headers from Excel file
     key_params = [
-        'Ac Output Active Power Total', 'Ac Output Load R', 'Ac Output Load Total',
-        'Pv Input Power 1', 'Discharging Current', 'Battery Voltage'
+        'ac_output_active_power_total',    # Main value at index 0
+        'ac_output_load_r',
+        'ac_output_load_total',
+        'pv_input_power_1',
+        'discharging_current',
+        'battery_voltage'
     ]
     
-    # Filter columns
+    # Filter columns - exact match with normalized names
     display_cols = []
     for col in numeric_cols:
         col_lower = col.lower()
-        if any(p in col_lower for p in key_params):
+        if col_lower in key_params:
             display_cols.append(col)
     
+    # If no exact matches, try partial match
+    if not display_cols:
+        for col in numeric_cols:
+            col_lower = col.lower()
+            if any(p.replace('_', '') in col_lower.replace('_', '') for p in key_params):
+                display_cols.append(col)
+    
+    # If still no columns, use first 7
     if not display_cols:
         display_cols = numeric_cols[:7]
     
@@ -234,16 +246,17 @@ if df is not None:
     # One main graph with AC Output Active Power Total - hover shows all values
     st.header("📊 AC Output Active Power Total - Hover for all values")
     
-    # Main column is AC Output Active Power Total
+    # Main column is AC Output Active Power Total (index 0 in key_params)
     main_col = None
     for col in display_cols:
-        if 'Ac Output Active Power Total' in col:
+        col_lower = col.lower()
+        if 'ac_output_active_power_total' in col_lower:
             main_col = col
             break
-    if main_col is None:
-        main_col = display_cols[0]
+    if main_col is None and display_cols:
+        main_col = display_cols[0]  # Use first column as main if not found
     
-    # Create hover_data dict - shows all parameters on hover
+    # Create hover_data dict - shows all parameters from key_params in hover
     hover_data = {}
     for col in display_cols:
         if col != main_col:  # Skip main col as it's already shown
