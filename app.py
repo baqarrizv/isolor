@@ -119,7 +119,7 @@ if df is not None:
     # Get display_cols for hover (need to get numeric cols first)
     numeric_cols_for_load = day_df_sorted_load.select_dtypes(include=[np.number]).columns.tolist()
     
-    # Key params for hover
+    # Key params for hover - include load_col
     key_params_load = [
         'ac_output_active_power_total',
         'ac_output_load_r',
@@ -127,28 +127,32 @@ if df is not None:
         'pv_input_power_1',
         'discharging_current',
         'grid_power_input_active_total',
-        'battery_voltage'
+        'battery_voltage',
+        load_col
     ]
     
-    # Filter columns
+    # Filter columns - also include load_col
     display_cols_load = []
     for col in numeric_cols_for_load:
         col_lower = col.lower()
         if col_lower in key_params_load:
             display_cols_load.append(col)
+        if col == load_col and col not in display_cols_load:
+            display_cols_load.append(col)
     
     if not display_cols_load:
         display_cols_load = numeric_cols_for_load[:7]
     
-    # Custom labels
+    # Custom labels - include load_col
     custom_labels_load = {
         'ac_output_active_power_total': 'AC Output Power (W)',
         'ac_output_load_r': 'Load R (%)',
         'ac_output_load_total': 'Load Total (%)',
-        'pv_input_power_1': 'PV Power (W)',
+        'pv_input_power_1': 'PV Input Power (W)',
         'discharging_current': 'Discharge (Amp)',
         'grid_power_input_active_total': 'Grid Power Input (W)',
-        'battery_voltage': 'Battery (V)'
+        'battery_voltage': 'Battery (V)',
+        load_col: 'Load Output %'
     }
     
     # Hourly Load
@@ -200,19 +204,21 @@ if df is not None:
         'discharging_current',
         'grid_power_input_active_total',
         'work_mode',
-        'battery_voltage'
+        'battery_voltage',
+        load_col  # Add Load %
     ]
     
     # Custom display names for hover - show friendly names instead of column names
     custom_labels = {
-        'ac_output_active_power_total': 'AC Output Power (W)',
-        'ac_output_load_r': 'Load R (%)',
-        'ac_output_load_total': 'Load Total (%)',
-        'pv_input_power_1': 'PV Power (W)',
+        'ac_output_active_power_total': 'AC Output Active Power Total (W)',
+        'ac_output_load_r': 'AC Output Load R (%)',
+        'ac_output_load_total': 'AC Output Load Total (%)',
+        'pv_input_power_1': 'PV Input Power (W)',
         'discharging_current': 'Discharging (Amp)',
         'grid_power_input_active_total': 'Grid Power Input (W)',
         'work_mode': 'Work Mode',
-        'battery_voltage': 'Battery (V)'
+        'battery_voltage': 'Battery Voltage (V)',
+        load_col: 'Load Output %'
     }
     
     # Filter numeric columns - exact match with normalized names
@@ -220,6 +226,9 @@ if df is not None:
     for col in numeric_cols:
         col_lower = col.lower()
         if col_lower in key_params:
+            display_cols.append(col)
+        # Also add load_col
+        if col == load_col and col not in display_cols:
             display_cols.append(col)
     
     # Also check for work_mode in all columns (it's not numeric)
