@@ -146,8 +146,33 @@ if uploaded_file:
     else:
         st.error("❌ Poor performance. Needs attention!")
 
-    # Voltage Graph
-    fig_voltage = px.line(day_df, x=datetime_col, y=voltage_col, title="Battery Voltage Trend")
+    # Voltage Graph with hover showing all parameters
+    st.subheader("🔋 Battery Voltage Trend (Hover for all values)")
+    st.write("Hover on any point to see all parameter values at that time")
+    
+    # Prepare sorted data for voltage chart
+    day_df_sorted_voltage = day_df.sort_values(datetime_col).reset_index(drop=True).copy()
+    
+    # Create hover_data for voltage chart - show all key parameters
+    hover_data_voltage = {}
+    for col in display_cols:
+        if col != voltage_col:
+            hover_data_voltage[col] = ':.2f'
+    
+    hover_data_voltage[datetime_col] = ':%H:%M:%S'
+    hover_data_voltage[mode_col] = True
+    
+    # Create voltage chart
+    fig_voltage = px.line(day_df_sorted_voltage, x=datetime_col, y=voltage_col,
+                         title="Battery Voltage Trend - Hover to see all parameters",
+                         markers=True,
+                         hover_data=hover_data_voltage)
+    
+    fig_voltage.update_layout(
+        hovermode='closest',
+        hoverdistance=-1
+    )
+    
     st.plotly_chart(fig_voltage, use_container_width=True)
 
     # One main graph with AC Output Active Power Total - hover shows all values
