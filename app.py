@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import requests
+import os
 from io import BytesIO
 
 st.set_page_config(page_title="Inverter Analytics Dashboard", layout="wide")
@@ -45,7 +46,17 @@ else:
     # Upload Excel File option
     uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx", "xls"])
     
-    if uploaded_file:
+    # Check if local file exists and load it
+    local_file = 'simplefile.xlsx'
+    if os.path.exists(local_file):
+        try:
+            df = pd.read_excel(local_file)
+            st.success(f"Loaded local file: {local_file} ✅")
+        except Exception as e:
+            st.warning(f"Could not load local file: {e}")
+            if uploaded_file:
+                df = pd.read_excel(uploaded_file)
+    elif uploaded_file:
         df = pd.read_excel(uploaded_file)
 
 # Rest of the code remains the same
@@ -187,21 +198,22 @@ if df is not None:
     numeric_cols = day_df.select_dtypes(include=[np.number]).columns.tolist()
     numeric_cols = [c for c in numeric_cols if c not in ['hour', 'time_diff', 'mode_numeric', 'mode_change', 'period_id']]
     
-    # Key parameters to show in hover
+    # Key parameters to show in hover - more permissive matching
     key_params = [
-        'Ac Output Active Power Total', 'Ac Output Load R', 'Ac Output Load Total',
-        'Pv Input Power 1', 'Discharging Current', 'Battery Voltage'
+        'ac output active power total', 'ac_output_active_power_total',
+        'active power', 'power total', 'ac_output'
     ]
     
-    # Filter columns
+    # Filter columns - more flexible matching
     display_cols = []
     for col in numeric_cols:
-        col_lower = col.lower()
-        if any(p in col_lower for p in key_params):
+        col_lower = col.lower().replace('_', ' ')
+        if any(p.replace('_', ' ') in col_lower or p.replace(' ', '') in col_lower.replace(' ', '') for p in key_params):
             display_cols.append(col)
     
+    # If still no columns, include more numeric columns
     if not display_cols:
-        display_cols = numeric_cols[:7]
+        display_cols = numeric_cols[:10]
     
     # Prepare sorted data
     day_df_sorted = day_df.sort_values(datetime_col).reset_index(drop=True).copy()
@@ -234,18 +246,20 @@ if df is not None:
     # One main graph with AC Output Active Power Total - hover shows all values
     st.header("📊 AC Output Active Power Total - Hover for all values")
     
-    # Main column is AC Output Active Power Total
+    # Main column is AC Output Active Power Total - check for normalized name with flexible matching
     main_col = None
-    for col in display_cols:
-        if 'Ac Output Active Power Total' in col:
+    for col in numeric_cols:  # Search in all numeric cols, not just display_cols
+        col_lower = col.lower().replace('_', ' ')
+        if 'ac output active power total' in col_lower or 'active power' in col_lower:
             main_col = col
             break
     if main_col is None:
-        main_col = display_cols[0]
+        main_col = display_cols[0] if display_cols else numeric_cols[0]
     
     # Create hover_data dict - shows all parameters on hover
+    # Include ALL numeric columns in hover data for comprehensive view
     hover_data = {}
-    for col in display_cols:
+    for col in numeric_cols:
         if col != main_col:  # Skip main col as it's already shown
             hover_data[col] = ':.2f'  # Format to 2 decimal places
     
