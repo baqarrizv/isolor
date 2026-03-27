@@ -184,13 +184,13 @@ if df is not None:
     
     # Show detailed breakdown for the selected date
     selected_day_data = daily_energy[daily_energy['date'] == selected_date]
-        if len(selected_day_data) > 0:
-            selected_day = selected_day_data.iloc[0]
-            st.subheader(f"📊 ek din ka purа breakdown: {selected_day['date']}")
-            col_a, col_b, col_c = st.columns(3)
-            col_a.metric("☀️ Solar se", f"{selected_day['solar_kwh']:.2f} units")
-            col_b.metric("⚡ Grid se", f"{selected_day['utility_kwh']:.2f} units")
-            col_c.metric("🏠 Total Load", f"{selected_day['load_kwh']:.2f} units")
+    if len(selected_day_data) > 0:
+        selected_day = selected_day_data.iloc[0]
+        st.subheader(f"📊 ek din ka purа breakdown: {selected_day['date']}")
+        col_a, col_b, col_c = st.columns(3)
+        col_a.metric("☀️ Solar se", f"{selected_day['solar_kwh']:.2f} units")
+        col_b.metric("⚡ Grid se", f"{selected_day['utility_kwh']:.2f} units")
+        col_c.metric("🏠 Total Load", f"{selected_day['load_kwh']:.2f} units")
             
             # Calculate percentages
             total_sources = selected_day['solar_kwh'] + selected_day['utility_kwh']
