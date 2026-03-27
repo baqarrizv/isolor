@@ -296,13 +296,6 @@ if df is not None:
     
     st.plotly_chart(fig_all_params, use_container_width=True)
     
-    # Add explanation
-    st.info("💡 **Hover anywhere on the chart** to see ALL parameter values at that specific time point.")
-    st.markdown("**Key Parameters shown:** " + ", ".join(display_cols))
-    
-    # Show all parameter values in a table format below
-    st.write("**All Parameter Values (for reference):**")
-    st.dataframe(day_df_sorted[[datetime_col, mode_col] + display_cols])
 
     # Raw Data
     with st.expander("View Raw Data"):
