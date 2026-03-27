@@ -189,8 +189,8 @@ if df is not None:
     
     # Key parameters to show in hover
     key_params = [
-        'AC Output Active Power Total', 'AC Output Load R', 'AC Output Load Total',
-        'PV Input Power 1', 'Discharging Current', 'Battery Voltage'
+        'Ac Output Active Power Total', 'Ac Output Load R', 'Ac Output Load Total',
+        'Pv Input Power 1', 'Discharging Current', 'Battery Voltage'
     ]
     
     # Filter columns
@@ -237,7 +237,7 @@ if df is not None:
     # Main column is AC Output Active Power Total
     main_col = None
     for col in display_cols:
-        if 'AC Output Active Power Total' in col:
+        if 'Ac Output Active Power Total' in col:
             main_col = col
             break
     if main_col is None:
