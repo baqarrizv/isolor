@@ -269,34 +269,6 @@ if df is not None:
     
     st.plotly_chart(fig_main, use_container_width=True)
     
-    # Show interactive chart with ALL parameters visible at once (alternative view)
-    st.write("📊 **All Parameters Timeline (Hover on any point to see all values)**")
-    
-    # Remove unused variable
-    all_hover_cols = []
-    
-    # Create a chart with all key parameters as lines using wide format
-    fig_all_params = px.line(day_df_sorted, x=datetime_col, y=display_cols,
-                              title="All Key Parameters - Hover shows ALL parameter values at that point",
-                              markers=True)
-    
-    fig_all_params.update_layout(
-        hovermode='x unified',
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
-        )
-    )
-    
-    # For wide format, each trace has its own y value, so we show all traces
-    fig_all_params.update_traces(hovertemplate="<b>%{x}</b><br>%{fullData.name}: %{y}<extra></extra>")
-    
-    st.plotly_chart(fig_all_params, use_container_width=True)
-    
-
     # Raw Data
     with st.expander("View Raw Data"):
         st.dataframe(day_df)
