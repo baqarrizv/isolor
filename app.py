@@ -270,7 +270,7 @@ if df is not None:
             break
     
     # Voltage Graph with hover showing all parameters
-    st.subheader("🔋 Battery Voltage Trend")
+    st.subheader("🔋 Grid Voltage Trend")
     
     # Create hover_data for voltage chart
     hover_data_voltage = {}
@@ -282,7 +282,7 @@ if df is not None:
     
     # Create voltage chart
     fig_voltage = px.line(day_df_sorted, x=datetime_col, y=voltage_col,
-                         title="Battery Voltage Trend - Hover to see all parameters",
+                         title="Grid Voltage Trend - Hover to see all parameters",
                          markers=True,
                          hover_data=hover_data_voltage)
     
