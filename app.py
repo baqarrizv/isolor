@@ -231,7 +231,6 @@ if df is not None:
             col_lower = col.lower()
             if any(p.replace('_', '') in col_lower.replace('_', '') for p in key_params):
                 display_cols.append(col)
-                display_cols.append(col)
     
     # If still no columns, use first 7
     if not display_cols:
@@ -282,7 +281,14 @@ if df is not None:
         for col in other_voltage_cols:
             val = row[col] if pd.notna(row[col]) else 0
             row_data.append(f"{val:.2f}")
+        # Add work_mode at the end if found
+        if work_mode_col:
+            row_data.append(str(row[work_mode_col]))
         voltage_customdata.append(tuple(row_data))
+    
+    # Add work_mode to hover template
+    if work_mode_col:
+        voltage_hover += f"<br><b>Work Mode</b>: %{{customdata[{len(other_voltage_cols)}]}}"
     
     fig_voltage.update_traces(
         hovertemplate=voltage_hover,
@@ -346,7 +352,14 @@ if df is not None:
         for col in other_cols:
             val = row[col] if pd.notna(row[col]) else 0
             row_data.append(f"{val:.2f}")
+        # Add work_mode at the end if found
+        if work_mode_col:
+            row_data.append(str(row[work_mode_col]))
         customdata_list.append(tuple(row_data))
+    
+    # Add work_mode to hover template
+    if work_mode_col:
+        hover_template += f"<br><b>Work Mode</b>: %{{customdata[{len(other_cols)}]}}"
     
     # Update traces with custom template
     fig_main.update_traces(
