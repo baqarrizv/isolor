@@ -237,11 +237,11 @@ if df is not None:
     # Main column is AC Output Active Power Total
     main_col = None
     for col in display_cols:
-        if 'ac_output_active_power_total' in col.lower():
+        if 'AC Output Active Power Total' in col:
             main_col = col
             break
     if main_col is None:
-        main_col = display_cols[0]
+        main_col = display_cols[17]
     
     # Create hover_data dict - shows all parameters on hover
     hover_data = {}
