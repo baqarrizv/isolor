@@ -147,7 +147,7 @@ if df is not None:
         'ac_output_load_total': 'Load Total (%)',
         'pv_input_power_1': 'PV Power (W)',
         'discharging_current': 'Discharge (Amp)',
-        'grid_power_input_active_total': 'Grid Power (W)',
+        'grid_power_input_active_total': 'Grid Power Input (W)',
         'battery_voltage': 'Battery (V)'
     }
     
@@ -205,14 +205,14 @@ if df is not None:
     
     # Custom display names for hover - show friendly names instead of column names
     custom_labels = {
-        'ac_output_active_power_total': 'AC Output Active Power Total (W)',
-        'ac_output_load_r': 'AC Output Load R (%)',
-        'ac_output_load_total': 'AC Output Load Total (%)',
-        'pv_input_power_1': 'PV Input Power 1 (W)',
-        'discharging_current': 'Discharging Current (Amp)',
+        'ac_output_active_power_total': 'AC Output Power (W)',
+        'ac_output_load_r': 'Load R (%)',
+        'ac_output_load_total': 'Load Total (%)',
+        'pv_input_power_1': 'PV Power (W)',
+        'discharging_current': 'Discharging (Amp)',
         'grid_power_input_active_total': 'Grid Power Input (W)',
         'work_mode': 'Work Mode',
-        'battery_voltage': 'Battery Voltage (V)'
+        'battery_voltage': 'Battery (V)'
     }
     
     # Filter numeric columns - exact match with normalized names
