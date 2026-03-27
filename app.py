@@ -211,18 +211,26 @@ if df is not None:
         'battery_voltage': 'Battery Voltage (V)'
     }
     
-    # Filter columns - exact match with normalized names
+    # Filter numeric columns - exact match with normalized names
     display_cols = []
     for col in numeric_cols:
         col_lower = col.lower()
         if col_lower in key_params:
             display_cols.append(col)
     
+    # Also check for work_mode in all columns (it's not numeric)
+    work_mode_col = None
+    for col in day_df.columns:
+        if 'work_mode' in col.lower():
+            work_mode_col = col
+            break
+    
     # If no exact matches, try partial match
     if not display_cols:
         for col in numeric_cols:
             col_lower = col.lower()
             if any(p.replace('_', '') in col_lower.replace('_', '') for p in key_params):
+                display_cols.append(col)
                 display_cols.append(col)
     
     # If still no columns, use first 7
@@ -231,6 +239,13 @@ if df is not None:
     
     # Prepare sorted data
     day_df_sorted = day_df.sort_values(datetime_col).reset_index(drop=True).copy()
+    
+    # Find work_mode column for hover display
+    work_mode_col = None
+    for col in day_df_sorted.columns:
+        if 'work_mode' in col.lower():
+            work_mode_col = col
+            break
     
     # Voltage Graph with hover showing all parameters
     st.subheader("🔋 Battery Voltage Trend")
