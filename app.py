@@ -218,18 +218,6 @@ if df is not None:
     fig_energy.update_layout(yaxis_title="Units (kWh)")
     st.plotly_chart(fig_energy, use_container_width=True)
     
-    
-    
-    # Export to CSV
-    st.subheader("📥 Export Data")
-    csv = daily_display.to_csv(index=False)
-    st.download_button(
-        label="Download Daily Energy Summary (CSV)",
-        data=csv,
-        file_name="daily_energy_summary.csv",
-        mime="text/csv"
-    )
-
 
     # Sidebar filters
     date_options = sorted(df["date"].unique(), reverse=True)
