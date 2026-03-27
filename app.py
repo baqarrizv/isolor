@@ -87,6 +87,58 @@ if df is not None:
 
     st.success("File Loaded Successfully ✅")
 
+    # ===== DAILY ENERGY SUMMARY SECTION =====
+    st.header("📊 Daily Energy Summary")
+
+    # Configurable price per kWh
+    unit_price = st.sidebar.number_input(
+        "Electricity Price ($/kWh)", 
+        min_value=0.0, 
+        value=0.15,
+        step=0.01
+    )
+
+    # Energy calculation function
+    def calculate_daily_energy(df, datetime_col, unit_price):
+        df_calc = df.copy()
+        df_calc = df_calc.fillna(0)
+        
+        # Power to energy (each row = 5 minutes)
+        factor = (5/60) / 1000
+        
+        df_calc['solar_kwh'] = df_calc['pv_input_power_1'] * factor
+        df_calc['utility_kwh'] = df_calc['grid_power_input_active_total'] * factor
+        df_calc['battery_kwh'] = df_calc['battery_power'].apply(
+            lambda x: x * factor if x < 0 else 0  # Only discharge
+        )
+        df_calc['load_kwh'] = df_calc['ac_output_active_power_total'] * factor
+        
+        # Group by date
+        daily = df_calc.groupby('date').agg({
+            'solar_kwh': 'sum',
+            'utility_kwh': 'sum', 
+            'battery_kwh': 'sum',
+            'load_kwh': 'sum'
+        }).reset_index()
+        
+        daily['savings'] = daily['solar_kwh'] * unit_price
+        
+        return daily
+
+    # Calculate and display
+    daily_energy = calculate_daily_energy(df, datetime_col, unit_price)
+    st.dataframe(daily_energy)
+
+    # Bar chart
+    fig_energy = px.bar(
+        daily_energy, x='date', 
+        y=['solar_kwh', 'utility_kwh', 'load_kwh'],
+        title="Daily Energy: Solar vs Utility vs Load",
+        barmode='group'
+    )
+    st.plotly_chart(fig_energy, use_container_width=True)
+
+
     # Sidebar filters
     date_options = sorted(df["date"].unique(), reverse=True)
     if len(date_options) == 0:
