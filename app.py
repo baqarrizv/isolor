@@ -186,92 +186,7 @@ if df is not None:
         fig_load.update_layout(hovermode='closest', hoverdistance=-1)
     
     st.plotly_chart(fig_load, use_container_width=True)
-
-    # Line Mode vs Battery Mode - Calculate actual time between rows
-    day_df[mode_col] = day_df[mode_col].astype(str)
     
-    # Sort by datetime to ensure proper calculation
-    day_df = day_df.sort_values(datetime_col).reset_index(drop=True)
-    
-    # Calculate time differences between consecutive rows (in hours)
-    day_df['time_diff'] = day_df[datetime_col].diff().dt.total_seconds() / 3600
-    
-    # Fill first row with a small value (assuming 1 minute interval)
-    day_df['time_diff'] = day_df['time_diff'].fillna(1/60)
-    
-    # Calculate time in each mode based on actual time between rows
-    line_records = day_df[day_df[mode_col].str.contains("L", case=False, na=False)]
-    battery_records = day_df[day_df[mode_col].str.contains("B", case=False, na=False)]
-    
-    # Sum up actual time spent in each mode
-    line_time_hours = line_records['time_diff'].sum() if len(line_records) > 0 else 0
-    battery_time_hours = battery_records['time_diff'].sum() if len(battery_records) > 0 else 0
-    
-    st.subheader("⚡ Inverter Operation Mode Time Calculation")
-    
-    # Show as bar chart
-    mode_data = pd.DataFrame({
-        'Mode': ['Grid (L)', 'Battery (B)'],
-        'Hours': [line_time_hours, battery_time_hours],
-        'Records': [len(line_records), len(battery_records)]
-    })
-    fig_mode = px.bar(mode_data, x='Mode', y='Hours', title="Total Time in Each Mode (Actual Time Between Rows)", color='Mode',
-                      color_discrete_map={'Grid (L)': '#FFD700', 'Battery (B)': '#00CC96'})
-    fig_mode.update_layout(yaxis_title="Hours")
-    st.plotly_chart(fig_mode, use_container_width=True)
-    
-    # Also show as metrics
-    col1, col2 = st.columns(2)
-    col1.metric("🔌 Grid (L) Time", f"{round(line_time_hours, 2)} hours")
-    col2.metric("🔋 Battery Mode Time", f"{round(battery_time_hours, 2)} hours")
-    
-    # Show mode distribution over time as a chart (per row) with start/end times
-    st.write("📊 Mode Timeline")
-    day_df['mode_numeric'] = day_df[mode_col].apply(lambda x: 1 if 'L' in str(x).upper() else 0 if 'B' in str(x).upper() else 0.5)
-    
-    # Add time display column for hover
-    day_df['Time'] = day_df[datetime_col].dt.strftime('%H:%M:%S')
-    
-    fig_timeline = px.scatter(day_df, x=datetime_col, y='mode_numeric', color=mode_col, 
-                               title="Mode Timeline per Row (Click points for details)", 
-                               color_discrete_map={'L': '#FFD700', 'B': '#00CC96'},
-                               hover_data={'mode_numeric': False, 'Time': True, datetime_col: False})
-    fig_timeline.update_layout(yaxis_title="Mode", yaxis=dict(tickvals=[0, 1], ticktext=['Battery (B)', 'Grid (L)']))
-    fig_timeline.update_traces(marker=dict(size=10))
-    st.plotly_chart(fig_timeline, use_container_width=True)
-    
-
-    # Battery Full (near 29V)
-    full_battery = day_df[(day_df[voltage_col] >= 28.5)]
-    st.subheader("🔋 Battery Status")
-    col1, col2 = st.columns(2)
-    col1.metric("Full Battery (≈100%)", f"{len(full_battery)} records - Voltage ≥ 28.5V")
-    
-    # Low battery indicator
-    low_battery = day_df[(day_df[voltage_col] < 24.0)]
-    col2.metric("Low Battery (≈0-20%)", f"{len(low_battery)} records - Voltage < 24V")
-
-    # Performance Score (simple logic)
-    line_mode_time = len(line_records)
-    battery_mode_time = len(battery_records)
-    
-    performance_score = (
-        (len(full_battery) / len(day_df)) * 40 +
-        (line_mode_time / len(day_df)) * 30 +
-        (1 - (battery_mode_time / len(day_df))) * 30
-    )
-
-    st.subheader("📊 Inverter Performance")
-    st.progress(int(performance_score))
-    st.write(f"**Score: {round(performance_score,2)} / 100**")
-    
-    if performance_score >= 70:
-        st.success("✅ Great performance! Inverter is working efficiently.")
-    elif performance_score >= 40:
-        st.warning("⚠️ Average performance. Check battery charging.")
-    else:
-        st.error("❌ Poor performance. Needs attention!")
-
     # Find numeric columns - needed for both voltage and power charts
     numeric_cols = day_df.select_dtypes(include=[np.number]).columns.tolist()
     numeric_cols = [c for c in numeric_cols if c not in ['hour', 'time_diff', 'mode_numeric', 'mode_change', 'period_id']]
@@ -335,8 +250,8 @@ if df is not None:
             work_mode_col = col
             break
     
-    # Voltage Graph with hover showing all parameters
-    st.subheader("🔋 Grid Voltage Trend")
+    # Grid Voltage Graph with hover showing all parameters
+    st.subheader("📈 Grid Voltage Trend")
     
     # Create hover_data for voltage chart
     hover_data_voltage = {}
@@ -508,7 +423,92 @@ if df is not None:
     )
     
     st.plotly_chart(fig_main, use_container_width=True)
+
+    # Line Mode vs Battery Mode - Calculate actual time between rows
+    day_df[mode_col] = day_df[mode_col].astype(str)
     
+    # Sort by datetime to ensure proper calculation
+    day_df = day_df.sort_values(datetime_col).reset_index(drop=True)
+    
+    # Calculate time differences between consecutive rows (in hours)
+    day_df['time_diff'] = day_df[datetime_col].diff().dt.total_seconds() / 3600
+    
+    # Fill first row with a small value (assuming 1 minute interval)
+    day_df['time_diff'] = day_df['time_diff'].fillna(1/60)
+    
+    # Calculate time in each mode based on actual time between rows
+    line_records = day_df[day_df[mode_col].str.contains("L", case=False, na=False)]
+    battery_records = day_df[day_df[mode_col].str.contains("B", case=False, na=False)]
+    
+    # Sum up actual time spent in each mode
+    line_time_hours = line_records['time_diff'].sum() if len(line_records) > 0 else 0
+    battery_time_hours = battery_records['time_diff'].sum() if len(battery_records) > 0 else 0
+    
+    st.subheader("⚡ Inverter Operation Mode Time Calculation")
+    
+    # Show as bar chart
+    mode_data = pd.DataFrame({
+        'Mode': ['Grid (L)', 'Battery (B)'],
+        'Hours': [line_time_hours, battery_time_hours],
+        'Records': [len(line_records), len(battery_records)]
+    })
+    fig_mode = px.bar(mode_data, x='Mode', y='Hours', title="Total Time in Each Mode (Actual Time Between Rows)", color='Mode',
+                      color_discrete_map={'Grid (L)': '#FFD700', 'Battery (B)': '#00CC96'})
+    fig_mode.update_layout(yaxis_title="Hours")
+    st.plotly_chart(fig_mode, use_container_width=True)
+    
+    # Also show as metrics
+    col1, col2 = st.columns(2)
+    col1.metric("🔌 Grid (L) Time", f"{round(line_time_hours, 2)} hours")
+    col2.metric("🔋 Battery Mode Time", f"{round(battery_time_hours, 2)} hours")
+    
+    # Show mode distribution over time as a chart (per row) with start/end times
+    st.write("📊 Mode Timeline")
+    day_df['mode_numeric'] = day_df[mode_col].apply(lambda x: 1 if 'L' in str(x).upper() else 0 if 'B' in str(x).upper() else 0.5)
+    
+    # Add time display column for hover
+    day_df['Time'] = day_df[datetime_col].dt.strftime('%H:%M:%S')
+    
+    fig_timeline = px.scatter(day_df, x=datetime_col, y='mode_numeric', color=mode_col, 
+                               title="Mode Timeline per Row (Click points for details)", 
+                               color_discrete_map={'L': '#FFD700', 'B': '#00CC96'},
+                               hover_data={'mode_numeric': False, 'Time': True, datetime_col: False})
+    fig_timeline.update_layout(yaxis_title="Mode", yaxis=dict(tickvals=[0, 1], ticktext=['Battery (B)', 'Grid (L)']))
+    fig_timeline.update_traces(marker=dict(size=10))
+    st.plotly_chart(fig_timeline, use_container_width=True)
+    
+
+    # Battery Full (near 29V)
+    full_battery = day_df[(day_df[voltage_col] >= 28.5)]
+    st.subheader("🔋 Battery Status")
+    col1, col2 = st.columns(2)
+    col1.metric("Full Battery (≈100%)", f"{len(full_battery)} records - Voltage ≥ 28.5V")
+    
+    # Low battery indicator
+    low_battery = day_df[(day_df[voltage_col] < 24.0)]
+    col2.metric("Low Battery (≈0-20%)", f"{len(low_battery)} records - Voltage < 24V")
+
+    # Performance Score (simple logic)
+    line_mode_time = len(line_records)
+    battery_mode_time = len(battery_records)
+    
+    performance_score = (
+        (len(full_battery) / len(day_df)) * 40 +
+        (line_mode_time / len(day_df)) * 30 +
+        (1 - (battery_mode_time / len(day_df))) * 30
+    )
+
+    st.subheader("📊 Inverter Performance")
+    st.progress(int(performance_score))
+    st.write(f"**Score: {round(performance_score,2)} / 100**")
+    
+    if performance_score >= 70:
+        st.success("✅ Great performance! Inverter is working efficiently.")
+    elif performance_score >= 40:
+        st.warning("⚠️ Average performance. Check battery charging.")
+    else:
+        st.error("❌ Poor performance. Needs attention!")
+
     # Raw Data
     with st.expander("View Raw Data"):
         st.dataframe(day_df)
