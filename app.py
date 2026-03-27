@@ -182,6 +182,240 @@ if df is not None:
     
     st.dataframe(daily_display, use_container_width=True)
     
+    # Sidebar date filter - moved before breakdown
+    date_options = sorted(df["date"].unique(), reverse=True)
+    if len(date_options) == 0:
+        st.error("⚠️ No valid dates found in the data.")
+        st.stop()
+    
+    selected_date = st.sidebar.selectbox("Select Date", date_options)
+    
+    # Show detailed breakdown for the selected date
+    selected_day_data = daily_energy[daily_energy['date'] == selected_date]
+    if len(selected_day_data) > 0:
+        selected_day = selected_day_data.iloc[0]
+        st.subheader(f"📊 ek din ka pura breakdown: {selected_day['date']}")
+        col_a, col_b, col_c = st.columns(3)
+        col_a.metric("☀️ Solar se", f"{selected_day['solar_kwh']:.2f} units")
+        col_b.metric("⚡ Grid se", f"{selected_day['utility_kwh']:.2f} units")
+        col_c.metric("🏠 Total Load", f"{selected_day['load_kwh']:.2f} units")
+
+        # Calculate percentages
+        total_sources = selected_day['solar_kwh'] + selected_day['utility_kwh']
+        if total_sources > 0:
+            solar_pct = (selected_day['solar_kwh'] / total_sources) * 100
+            grid_pct = (selected_day['utility_kwh'] / total_sources) * 100
+
+            source_df = pd.DataFrame({
+                'Source': ['☀️ Solar', '⚡ Grid'],
+                'Energy (kWh)': [selected_day['solar_kwh'], selected_day['utility_kwh']]
+            })
+
+            fig_pie = px.pie(source_df, values='Energy (kWh)', names='Source',
+                           title="Energy Sources")
+            st.plotly_chart(fig_pie, use_container_width=True)
+
+    # Bar chart - Solar vs Grid vs Load
+    fig_energy = px.bar(
+        daily_energy, x='date', 
+        y=['solar_kwh', 'utility_kwh', 'load_kwh'],
+        title="📊 Daily Energy: Solar vs Grid vs Load (units)",
+        barmode='group',
+        labels={'date': 'Date', 'value': 'Units (kWh)', 'variable': 'Type'},
+        color_discrete_map={
+            'solar_kwh': '#FFD700',
+            'utility_kwh': '#1E90FF',
+            'load_kwh': '#FF6347'
+        }
+    )
+    fig_energy.update_layout(yaxis_title="Units (kWh)")
+    st.plotly_chart(fig_energy, use_container_width=True)
+    
+    # Analysis for selected date
+    day_df = df[df["date"] == selected_date]import streamlit as st
+import pandas as pd
+import numpy as np
+import plotly.express as px
+import requests
+import os
+from io import BytesIO
+
+st.set_page_config(page_title="Inverter Analytics Dashboard", layout="wide")
+
+st.title("🔋 Inverter Analytics Dashboard")
+st.markdown("Upload your inverter Excel file or use a Google Sheet link and get detailed hourly & daily insights.")
+
+# Option to choose data source - Default is Google Sheet
+data_source = st.radio("Choose Data Source:", ["🔗 Google Sheet Link", "📁 Upload Excel File"], horizontal=True, index=0)
+
+df = None
+
+# Default Google Sheet URL (hardcoded)
+DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTy3qIf4XMXKwCzy4jhWksU5wm3KqYeqvFWVSusIehRxvn783TJwoBljQdkYiE5wETGaIsY_rSGl0P3/pub?output=xlsx"
+
+if data_source == "🔗 Google Sheet Link":
+    # Google Sheet option - use hardcoded URL by default
+    use_custom_sheet = st.checkbox("Use different Google Sheet", value=False)
+    
+    if use_custom_sheet:
+        sheet_url = st.text_input("🔗 Enter Custom Google Sheet URL (Published to Web)", 
+                                  placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?output=xlsx")
+    else:
+        sheet_url = DEFAULT_SHEET_URL
+        st.info(f"📋 Using default Google Sheet")
+    
+    try:
+        # Fetch the sheet
+        response = requests.get(sheet_url)
+        response.raise_for_status()
+        
+        # Read Excel from response
+        df = pd.read_excel(BytesIO(response.content))
+        st.success("Google Sheet Loaded Successfully ✅")
+        
+    except Exception as e:
+        st.error(f"⚠️ Error loading Google Sheet: {str(e)}")
+        st.info("Make sure the sheet is published to web and you have the correct URL.")
+else:
+    # Upload Excel File option
+    uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx", "xls"])
+    
+    # If user uploaded a file, use it. Otherwise check for local file.
+    if uploaded_file is not None:
+        try:
+            df = pd.read_excel(uploaded_file)
+            st.success(f"Loaded uploaded file: {uploaded_file.name} ✅")
+        except Exception as e:
+            st.error(f"Error reading uploaded file: {e}")
+    else:
+        # Check if local file exists and load it
+        local_file = 'simplefile.xlsx'
+        if os.path.exists(local_file):
+            try:
+                df = pd.read_excel(local_file)
+                st.success(f"Loaded local file: {local_file} ✅")
+            except Exception as e:
+                st.warning(f"Could not load local file: {e}")
+
+# Rest of the code remains the same
+if df is not None:
+    # Normalize column names
+    df.columns = [col.strip().lower().replace(" ", "_") for col in df.columns]
+
+    # Try to detect columns with error handling
+    try:
+        datetime_col = [col for col in df.columns if "time" in col or "date" in col][0]
+        load_col = [col for col in df.columns if "load" in col][0]
+        voltage_col = [col for col in df.columns if "volt" in col][0]
+        mode_col = [col for col in df.columns if "mode" in col or "status" in col][0]
+    except IndexError:
+        st.error("⚠️ Could not detect required columns. Please ensure your Excel file has columns containing: time/date, load, voltage, mode/status.")
+        st.write("**Detected columns:**", df.columns.tolist())
+        st.stop()
+
+    df[datetime_col] = pd.to_datetime(df[datetime_col], errors='coerce')
+
+    # Check for invalid datetime values
+    if df[datetime_col].isna().all():
+        st.error("⚠️ Could not parse datetime column. Please check your data format.")
+        st.stop()
+
+    df["date"] = df[datetime_col].dt.date
+    df["hour"] = df[datetime_col].dt.hour
+
+    st.success("File Loaded Successfully ✅")
+
+    # ===== DAILY ENERGY SUMMARY SECTION =====
+    st.header("📊 Daily Energy Summary")
+
+    # Option to choose calculation method: Fixed 5 min or Average based
+    calc_method = st.sidebar.radio(
+        "Calculation Method:",
+        ["Fixed 5 Minutes", "Average Based"],
+        index=1,
+        horizontal=True,
+        help="Fixed 5 Minutes: Uses 5 min per row. Average Based: Auto-detects time interval from data (default)."
+    )
+
+    # Find battery power columns - use discharging_current and battery_voltage
+    battery_current_col = None
+    battery_voltage_col = None
+    for col in df.columns:
+        col_lower = col.lower()
+        if 'discharging_current' in col_lower:
+            battery_current_col = col
+        if 'battery_voltage' in col_lower:
+            battery_voltage_col = col
+    
+    # Energy calculation function - USE FIXED 5 MINUTES per row
+    def calculate_daily_energy(df, datetime_col, calc_method):
+        df_calc = df.copy()
+        df_calc = df_calc.fillna(0)
+        
+        if calc_method == "Fixed 5 Minutes":
+            # FIXED: Each row = 5 minutes = 0.0833 hours
+            time_per_row_hours = 5 / 60  # 0.0833 hours
+            
+            st.write(f"Debug: Each row = 5 minutes = {time_per_row_hours:.4f} hours")
+        else:
+            # Average Based: Auto-detect time interval from data
+            # Sort by datetime
+            df_calc = df_calc.sort_values(datetime_col)
+            
+            # Calculate time differences between consecutive rows
+            time_diffs = df_calc[datetime_col].diff().dropna()
+            
+            # Get average time difference in minutes
+            if len(time_diffs) > 0:
+                avg_minutes = time_diffs.mean().total_seconds() / 60
+                time_per_row_hours = avg_minutes / 60
+                st.write(f"Debug: Auto-detected average interval = {avg_minutes:.2f} minutes = {time_per_row_hours:.4f} hours")
+            else:
+                # Fallback to 5 minutes
+                time_per_row_hours = 5 / 60
+                st.write(f"Debug: Could not detect, using fallback = 5 minutes = {time_per_row_hours:.4f} hours")
+        
+        # Energy (kWh) = Power (W) × time_per_row_hours / 1000
+        # FIXED FORMULA: Units = Power × (5/60) / 1000
+        df_calc['solar_kwh'] = df_calc['pv_input_power_1'] * time_per_row_hours / 1000
+        df_calc['utility_kwh'] = df_calc['grid_power_input_active_total'] * time_per_row_hours / 1000
+        df_calc['load_kwh'] = df_calc['ac_output_active_power_total'] * time_per_row_hours / 1000
+        
+        # Show raw power sums (what user calculates manually)
+        total_solar_power = df_calc['pv_input_power_1'].sum()
+        total_solar_kwh = df_calc['solar_kwh'].sum()
+        
+        st.write(f"Raw Solar Power Sum = {total_solar_power} W")
+        st.write(f"Solar kWh (using {calc_method}) = {total_solar_kwh:.2f} kWh")
+        st.write(f"Calculation: {total_solar_power} × {time_per_row_hours:.4f} / 1000 = {total_solar_kwh:.2f} kWh")
+        
+        # Group by date
+        daily = df_calc.groupby('date').agg({
+            'solar_kwh': 'sum',
+            'utility_kwh': 'sum', 
+            'load_kwh': 'sum'
+        }).reset_index()
+        
+        # Count records per day
+        record_counts = df_calc.groupby('date').size().reset_index(name='total_records')
+        daily = daily.merge(record_counts, on='date')
+        
+        return daily
+
+    # Calculate and display
+    daily_energy = calculate_daily_energy(df, datetime_col, calc_method)
+    
+    # Format the dataframe for better display
+    daily_display = daily_energy.copy()
+    daily_display['solar_kwh'] = daily_display['solar_kwh'].round(2)
+    daily_display['utility_kwh'] = daily_display['utility_kwh'].round(2)
+    daily_display['load_kwh'] = daily_display['load_kwh'].round(2)
+    
+    # Rename columns for better display
+    daily_display.columns = ['Date', 'Solar (kWh)', 'Grid (kWh)', 'Load (kWh)', 'Records']
+    
+    st.dataframe(daily_display, use_container_width=True)
+    
     # Show detailed breakdown for the selected date
     selected_day_data = daily_energy[daily_energy['date'] == selected_date]
     if len(selected_day_data) > 0:
