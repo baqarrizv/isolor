@@ -198,6 +198,17 @@ if df is not None:
         'battery_voltage'
     ]
     
+    # Custom display names for hover - show friendly names instead of column names
+    custom_labels = {
+        'ac_output_active_power_total': 'AC Output Active Power Total (W)',
+        'ac_output_load_r': 'AC Output Load R (%)',
+        'ac_output_load_total': 'AC Output Load Total (%)',
+        'pv_input_power_1': 'PV Input Power 1 (W)',
+        'discharging_current': 'Discharging Current (Amp)',
+        'grid_power_input_active_total': 'Grid Power Input (W)',
+        'battery_voltage': 'Battery Voltage (V)'
+    }
+    
     # Filter columns - exact match with normalized names
     display_cols = []
     for col in numeric_cols:
@@ -257,23 +268,51 @@ if df is not None:
     if main_col is None and display_cols:
         main_col = display_cols[0]  # Use first column as main if not found
     
-    # Create hover_data dict - shows all parameters from key_params in hover
+    # Create hover_data dict - shows all parameters from key_params in hover with custom labels
     hover_data = {}
     for col in display_cols:
-        if col != main_col:  # Skip main col as it's already shown
-            hover_data[col] = ':.2f'  # Format to 2 decimal places
+        if col != main_col:
+            hover_data[col] = ':.2f'
     
-    # Also add time and mode to hover
+    # Add time to hover
     hover_data[datetime_col] = ':%H:%M:%S'
-    hover_data[mode_col] = True
     
-    # Create one main line chart with ALL parameters in hover
+    # Create main line chart
     fig_main = px.line(day_df_sorted, x=datetime_col, y=main_col,
                        title="AC Output Active Power Total - Hover to see all parameters",
                        markers=True,
                        hover_data=hover_data)
     
-    # Update layout for unified hover mode
+    # Build custom hover with friendly names - use hovertemplate
+    # Main value
+    main_label = custom_labels.get(main_col, main_col)
+    hover_template = f"<b>{main_label}</b>: %{{y:.2f}}<br>"
+    
+    # Add other columns with their friendly names and values
+    other_cols = [col for col in display_cols if col != main_col]
+    for i, col in enumerate(other_cols):
+        friendly_name = custom_labels.get(col, col)
+        # Access customdata by index - need to use different approach
+        hover_template += f"<b>{friendly_name}</b>: %{{customdata[{i}]}}<br>"
+    
+    # Add time
+    hover_template += f"<b>Time</b>: %{{x}}"
+    
+    # Prepare customdata with all column values
+    customdata_list = []
+    for _, row in day_df_sorted.iterrows():
+        row_data = []
+        for col in other_cols:
+            val = row[col] if pd.notna(row[col]) else 0
+            row_data.append(f"{val:.2f}")
+        customdata_list.append(tuple(row_data))
+    
+    # Update traces with custom template
+    fig_main.update_traces(
+        hovertemplate=hover_template,
+        customdata=customdata_list
+    )
+    
     fig_main.update_layout(
         hovermode='closest',
         hoverdistance=-1
