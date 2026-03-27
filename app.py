@@ -194,6 +194,7 @@ if df is not None:
         'ac_output_load_total',
         'pv_input_power_1',
         'discharging_current',
+        'grid_power_input_active_total',
         'battery_voltage'
     ]
     
@@ -244,7 +245,7 @@ if df is not None:
     st.plotly_chart(fig_voltage, use_container_width=True)
 
     # One main graph with AC Output Active Power Total - hover shows all values
-    st.header("📊 AC Output Active Power Total - Hover for all values")
+    st.header("📊 AC Output Active Power Total (W) - Hover for all values")
     
     # Main column is AC Output Active Power Total (index 0 in key_params)
     main_col = None
