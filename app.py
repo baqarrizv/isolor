@@ -109,15 +109,81 @@ if df is not None:
     # Sort data by datetime for row-wise view
     day_df_sorted_load = day_df.sort_values(datetime_col).reset_index(drop=True)
     
+    # Find work_mode column for hover display
+    work_mode_col_load = None
+    for col in day_df_sorted_load.columns:
+        if 'work_mode' in col.lower():
+            work_mode_col_load = col
+            break
+    
+    # Get display_cols for hover (need to get numeric cols first)
+    numeric_cols_for_load = day_df_sorted_load.select_dtypes(include=[np.number]).columns.tolist()
+    
+    # Key params for hover
+    key_params_load = [
+        'ac_output_active_power_total',
+        'ac_output_load_r',
+        'ac_output_load_total',
+        'pv_input_power_1',
+        'discharging_current',
+        'grid_power_input_active_total',
+        'battery_voltage'
+    ]
+    
+    # Filter columns
+    display_cols_load = []
+    for col in numeric_cols_for_load:
+        col_lower = col.lower()
+        if col_lower in key_params_load:
+            display_cols_load.append(col)
+    
+    if not display_cols_load:
+        display_cols_load = numeric_cols_for_load[:7]
+    
+    # Custom labels
+    custom_labels_load = {
+        'ac_output_active_power_total': 'AC Output Power (W)',
+        'ac_output_load_r': 'Load R (%)',
+        'ac_output_load_total': 'Load Total (%)',
+        'pv_input_power_1': 'PV Power (W)',
+        'discharging_current': 'Discharge (Amp)',
+        'grid_power_input_active_total': 'Grid Power (W)',
+        'battery_voltage': 'Battery (V)'
+    }
+    
     # Hourly Load
     if load_view_mode == "Hourly Average":
         hourly_load = day_df.groupby("hour")[load_col].mean().reset_index()
         fig_load = px.line(hourly_load, x="hour", y=load_col, markers=True, title="Hourly Load Output % Wise (Average)")
     else:
-        # Row-wise view - show every data point sorted by time
+        # Row-wise view - show every data point sorted by time with hover
         row_load = day_df_sorted_load[[datetime_col, load_col]].copy()
-        fig_load = px.line(row_load, x=datetime_col, y=load_col, markers=True, title="Load Output % Wise - Every Entry (Row-wise)")
+        fig_load = px.line(day_df_sorted_load, x=datetime_col, y=load_col, markers=True, title="Load Output % Wise - Every Entry (Row-wise)")
         fig_load.update_layout(xaxis_title="Time", yaxis_title=f"Load %")
+        
+        # Build custom hover with key params for row-wise view
+        load_hover = f"<b>Load %</b>: %{{y:.2f}}<br>"
+        for i, col in enumerate(display_cols_load):
+            friendly = custom_labels_load.get(col, col)
+            load_hover += f"<b>{friendly}</b>: %{{customdata[{i}]}}<br>"
+        
+        if work_mode_col_load:
+            load_hover += f"<b>Work Mode</b>: %{{customdata[{len(display_cols_load)}]}}<br>"
+        load_hover += f"<b>Time</b>: %{{x}}"
+        
+        # Prepare customdata
+        load_customdata = []
+        for _, row in day_df_sorted_load.iterrows():
+            row_data = []
+            for col in display_cols_load:
+                val = row[col] if pd.notna(row[col]) else 0
+                row_data.append(f"{val:.2f}")
+            if work_mode_col_load:
+                row_data.append(str(row[work_mode_col_load]))
+            load_customdata.append(tuple(row_data))
+        
+        fig_load.update_traces(hovertemplate=load_hover, customdata=load_customdata)
+        fig_load.update_layout(hovermode='closest', hoverdistance=-1)
     
     st.plotly_chart(fig_load, use_container_width=True)
 
