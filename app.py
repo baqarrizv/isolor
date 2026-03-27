@@ -168,16 +168,56 @@ if df is not None:
     # Show detailed breakdown for the latest day
     latest_day = daily_energy.iloc[-1] if len(daily_energy) > 0 else None
     if latest_day is not None:
-        st.subheader(f"📊 Energy Breakdown for {latest_day['date']}")
+        st.subheader(f"📊 ek din ka purа breakdown: {latest_day['date']}")
         
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("☀️ Solar Energy", f"{latest_day['solar_kwh']:.2f} kWh", help="Total solar energy generated and used")
-        col2.metric("⚡ Grid Energy", f"{latest_day['utility_kwh']:.2f} kWh", help="Total energy imported from utility grid")
-        col3.metric("🔋 Battery Used", f"{latest_day['battery_discharge_kwh']:.2f} kWh", help="Total energy consumed from battery (discharge)")
-        col4.metric("🏠 Total Load", f"{latest_day['load_kwh']:.2f} kWh", help="Total energy consumed by home (from AC Output Active Power Total)")
+        # Show calculation clearly
+        st.info("💡 **Calculation Formula:** 100W × 10hr = 1 Unit (kWh)")
+        st.write("---Din bhar ka total consumption:---")
         
-        # Show what column is used for load calculation
-        st.caption("📝 Load calculation: AC Output Active Power Total (W) → converted to kWh")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("### ⚡ Total Energy Sources:")
+            total_sources = latest_day['solar_kwh'] + latest_day['utility_kwh'] + latest_day['battery_discharge_kwh']
+            
+            st.write(f"☀️ **Solar se mila:** {latest_day['solar_kwh']:.2f} units")
+            st.write(f"⚡ **Grid se khareeda:** {latest_day['utility_kwh']:.2f} units")
+            st.write(f"🔋 **Battery se use hua:** {latest_day['battery_discharge_kwh']:.2f} units")
+            st.write(f"📍 **Total sources:** {total_sources:.2f} units")
+            
+            # Percentage
+            if total_sources > 0:
+                solar_pct = (latest_day['solar_kwh'] / total_sources) * 100
+                grid_pct = (latest_day['utility_kwh'] / total_sources) * 100
+                battery_pct = (latest_day['battery_discharge_kwh'] / total_sources) * 100
+                
+                st.write("---Har 100 units main se:---")
+                st.write(f"☀️ **Solar se:** {solar_pct:.1f}% ({latest_day['solar_kwh']:.2f} units)")
+                st.write(f"⚡ **Grid se:** {grid_pct:.1f}% ({latest_day['utility_kwh']:.2f} units)")
+                st.write(f"🔋 **Battery se:** {battery_pct:.1f}% ({latest_day['battery_discharge_kwh']:.2f} units)")
+        
+        with col2:
+            st.markdown("### 🏠 Ghar ka Total Load:")
+            st.write(f"**Total Load:** {latest_day['load_kwh']:.2f} units (kWh)")
+            
+            st.write("---Yeh kaise calculate hua:---)")
+            st.code("Load = AC Output Power (W) × time\n\nHar row = 5 minute\nEnergy (kWh) = W × (5/60) / 1000")
+            
+            st.write("📊 Har row 5 minute ka hai")
+            st.write("📊 Har row ko units (kWh) mein convert kiya")
+            st.write("📊 Phir sab add kiya for pure din ka total")
+        
+        # Summary - Simple numbers
+        st.write("--- ek din ka jamaa j 이끕 ata: ---")
+        col_a, col_b, col_c, col_d = st.columns(4)
+        col_a.metric("☀️ Solar se", f"{latest_day['solar_kwh']:.2f} units")
+        col_b.metric("⚡ Grid se", f"{latest_day['utility_kwh']:.2f} units")
+        col_c.metric("🔋 Battery se", f"{latest_day['battery_discharge_kwh']:.2f} units")
+        col_d.metric("🏠 Total Load", f"{latest_day['load_kwh']:.2f} units")
+        
+        # Final simple sentence
+        st.success(f"📊 {latest_day['date']} ko aapke ghar ne {latest_day['load_kwh']:.2f} units use kiye. Is main se ☀️ {latest_day['solar_kwh']:.2f} units solar se, ⚡ {latest_day['utility_kwh']:.2f} units grid se, aur 🔋 {latest_day['battery_discharge_kwh']:.2f} units battery se aaye." )
+        col_d.metric("🏠 Total Load", f"{latest_day['load_kwh']:.2f}")
         
         # Calculate percentages
         total_sources = latest_day['solar_kwh'] + latest_day['utility_kwh'] + latest_day['battery_discharge_kwh']
