@@ -108,60 +108,53 @@ if df is not None:
         if 'battery_voltage' in col_lower:
             battery_voltage_col = col
     
-    # Energy calculation function
-    def calculate_daily_energy(df, datetime_col, unit_price, battery_current_col, battery_voltage_col):
+    # Energy calculation function - calculate actual time between rows
+    def calculate_daily_energy(df, datetime_col, unit_price):
         df_calc = df.copy()
         df_calc = df_calc.fillna(0)
         
-        # Power to energy (each row = 5 minutes)
-        factor = (5/60) / 1000
+        # Sort by datetime to calculate time differences
+        df_calc = df_calc.sort_values(datetime_col)
         
-        df_calc['solar_kwh'] = df_calc['pv_input_power_1'] * factor
-        df_calc['utility_kwh'] = df_calc['grid_power_input_active_total'] * factor
+        # Calculate time difference between consecutive rows in hours
+        df_calc['time_diff_hours'] = df_calc[datetime_col].diff().dt.total_seconds() / 3600
         
-        # Battery power = current × voltage, only include discharge (negative current means discharging)
-        if battery_current_col and battery_voltage_col:
-            df_calc['battery_power_w'] = df_calc[battery_current_col] * df_calc[battery_voltage_col]
-            df_calc['battery_kwh'] = df_calc['battery_power_w'].apply(
-                lambda x: x * factor if x > 0 else 0  # Only charging (positive power)
-            )
-            # Also calculate discharge for reporting
-            df_calc['battery_discharge_kwh'] = df_calc['battery_power_w'].apply(
-                lambda x: abs(x) * factor if x < 0 else 0  # Only discharging (negative power)
-            )
-        else:
-            df_calc['battery_kwh'] = 0
-            df_calc['battery_discharge_kwh'] = 0
+        # First row - assume average interval if not available (use 5 min = 0.0833 hours)
+        avg_interval = df_calc['time_diff_hours'].median() if df_calc['time_diff_hours'].median() > 0 else (5/60)
+        df_calc['time_diff_hours'] = df_calc['time_diff_hours'].fillna(avg_interval)
         
-        df_calc['load_kwh'] = df_calc['ac_output_active_power_total'] * factor
+        # Energy (kWh) = Power (W) × Time (hours) / 1000
+        df_calc['solar_kwh'] = df_calc['pv_input_power_1'] * df_calc['time_diff_hours'] / 1000
+        df_calc['utility_kwh'] = df_calc['grid_power_input_active_total'] * df_calc['time_diff_hours'] / 1000
+        df_calc['load_kwh'] = df_calc['ac_output_active_power_total'] * df_calc['time_diff_hours'] / 1000
         
         # Group by date
         daily = df_calc.groupby('date').agg({
             'solar_kwh': 'sum',
             'utility_kwh': 'sum', 
-            'battery_kwh': 'sum',
-            'battery_discharge_kwh': 'sum',
-            'load_kwh': 'sum'
+            'load_kwh': 'sum',
+            'time_diff_hours': 'count'  # Count number of rows/records
         }).reset_index()
+        
+        # Rename the count column
+        daily = daily.rename(columns={'time_diff_hours': 'total_records'})
         
         daily['savings'] = daily['solar_kwh'] * unit_price
         
         return daily
 
     # Calculate and display
-    daily_energy = calculate_daily_energy(df, datetime_col, unit_price, battery_current_col, battery_voltage_col)
+    daily_energy = calculate_daily_energy(df, datetime_col, unit_price)
     
     # Format the dataframe for better display
     daily_display = daily_energy.copy()
     daily_display['solar_kwh'] = daily_display['solar_kwh'].round(2)
     daily_display['utility_kwh'] = daily_display['utility_kwh'].round(2)
-    daily_display['battery_kwh'] = daily_display['battery_kwh'].round(2)
-    daily_display['battery_discharge_kwh'] = daily_display['battery_discharge_kwh'].round(2)
     daily_display['load_kwh'] = daily_display['load_kwh'].round(2)
     daily_display['savings'] = daily_display['savings'].round(2)
     
     # Rename columns for better display
-    daily_display.columns = ['Date', 'Solar (kWh)', 'Grid (kWh)', 'Battery Charge (kWh)', 'Battery Discharge (kWh)', 'Total Load (kWh)', 'Solar Savings ($)']
+    daily_display.columns = ['Date', 'Solar (kWh)', 'Grid (kWh)', 'Total Load (kWh)', 'Records', 'Solar Savings ($)']
     
     st.dataframe(daily_display, use_container_width=True)
     
@@ -178,23 +171,20 @@ if df is not None:
         
         with col1:
             st.markdown("### ⚡ Total Energy Sources:")
-            total_sources = latest_day['solar_kwh'] + latest_day['utility_kwh'] + latest_day['battery_discharge_kwh']
+            total_sources = latest_day['solar_kwh'] + latest_day['utility_kwh']
             
             st.write(f"☀️ **Solar se mila:** {latest_day['solar_kwh']:.2f} units")
             st.write(f"⚡ **Grid se khareeda:** {latest_day['utility_kwh']:.2f} units")
-            st.write(f"🔋 **Battery se use hua:** {latest_day['battery_discharge_kwh']:.2f} units")
-            st.write(f"📍 **Total sources:** {total_sources:.2f} units")
+            st.write(f"📍 **Total:** {total_sources:.2f} units")
             
             # Percentage
             if total_sources > 0:
                 solar_pct = (latest_day['solar_kwh'] / total_sources) * 100
                 grid_pct = (latest_day['utility_kwh'] / total_sources) * 100
-                battery_pct = (latest_day['battery_discharge_kwh'] / total_sources) * 100
                 
-                st.write("---Har 100 units main se:---")
-                st.write(f"☀️ **Solar se:** {solar_pct:.1f}% ({latest_day['solar_kwh']:.2f} units)")
-                st.write(f"⚡ **Grid se:** {grid_pct:.1f}% ({latest_day['utility_kwh']:.2f} units)")
-                st.write(f"🔋 **Battery se:** {battery_pct:.1f}% ({latest_day['battery_discharge_kwh']:.2f} units)")
+                st.write("---Har 100 units main:---")
+                st.write(f"☀️ Solar: {solar_pct:.1f}%")
+                st.write(f"⚡ Grid: {grid_pct:.1f}%")
         
         with col2:
             st.markdown("### 🏠 Ghar ka Total Load:")
@@ -209,77 +199,52 @@ if df is not None:
         
         # Summary - Simple numbers
         st.write("--- ek din ka jamaa j 이끕 ata: ---")
-        col_a, col_b, col_c, col_d = st.columns(4)
+        col_a, col_b, col_c = st.columns(3)
         col_a.metric("☀️ Solar se", f"{latest_day['solar_kwh']:.2f} units")
         col_b.metric("⚡ Grid se", f"{latest_day['utility_kwh']:.2f} units")
-        col_c.metric("🔋 Battery se", f"{latest_day['battery_discharge_kwh']:.2f} units")
-        col_d.metric("🏠 Total Load", f"{latest_day['load_kwh']:.2f} units")
+        col_c.metric("🏠 Total Load", f"{latest_day['load_kwh']:.2f} units")
         
-        # Final simple sentence
-        st.success(f"📊 {latest_day['date']} ko aapke ghar ne {latest_day['load_kwh']:.2f} units use kiye. Is main se ☀️ {latest_day['solar_kwh']:.2f} units solar se, ⚡ {latest_day['utility_kwh']:.2f} units grid se, aur 🔋 {latest_day['battery_discharge_kwh']:.2f} units battery se aaye." )
-        col_d.metric("🏠 Total Load", f"{latest_day['load_kwh']:.2f}")
+        st.success(f"📊 {latest_day['date']} ko: {latest_day['load_kwh']:.2f} units use hue. ☀️ {latest_day['solar_kwh']:.2f} solar se, ⚡ {latest_day['utility_kwh']:.2f} grid se.")
         
         # Calculate percentages
-        total_sources = latest_day['solar_kwh'] + latest_day['utility_kwh'] + latest_day['battery_discharge_kwh']
+        total_sources = latest_day['solar_kwh'] + latest_day['utility_kwh']
         if total_sources > 0:
             solar_pct = (latest_day['solar_kwh'] / total_sources) * 100
             grid_pct = (latest_day['utility_kwh'] / total_sources) * 100
-            battery_pct = (latest_day['battery_discharge_kwh'] / total_sources) * 100
             
-            st.progress(100)
-            st.write("**Energy Sources Distribution:**")
-            
-            # Create progress bars for each source
+            st.write("---Energy Sources:---")
             source_df = pd.DataFrame({
-                'Source': ['☀️ Solar', '⚡ Grid (Utility)', '🔋 Battery'],
-                'Energy (kWh)': [latest_day['solar_kwh'], latest_day['utility_kwh'], latest_day['battery_discharge_kwh']],
-                'Percentage': [solar_pct, grid_pct, battery_pct]
+                'Source': ['☀️ Solar', '⚡ Grid'],
+                'Energy (kWh)': [latest_day['solar_kwh'], latest_day['utility_kwh']]
             })
             
             fig_pie = px.pie(source_df, values='Energy (kWh)', names='Source', 
-                           title="Energy Sources Pie Chart",
-                           color='Source',
-                           color_discrete_map={'☀️ Solar': '#FFD700', '⚡ Grid (Utility)': '#1E90FF', '🔋 Battery': '#00CC96'})
+                           title="Energy Sources")
             st.plotly_chart(fig_pie, use_container_width=True)
 
-    # Bar chart - showing all energy sources clearly
+    # Bar chart - Solar vs Grid vs Load
     fig_energy = px.bar(
         daily_energy, x='date', 
-        y=['solar_kwh', 'utility_kwh', 'battery_discharge_kwh', 'load_kwh'],
-        title="📊 Daily Energy Summary: Solar vs Grid vs Battery vs Load",
+        y=['solar_kwh', 'utility_kwh', 'load_kwh'],
+        title="📊 Daily Energy: Solar vs Grid vs Load (units)",
         barmode='group',
-        labels={'date': 'Date', 'value': 'Energy (kWh)', 'variable': 'Energy Type'},
+        labels={'date': 'Date', 'value': 'Units (kWh)', 'variable': 'Type'},
         color_discrete_map={
             'solar_kwh': '#FFD700',
             'utility_kwh': '#1E90FF',
-            'battery_discharge_kwh': '#00CC96',
             'load_kwh': '#FF6347'
         }
     )
-    fig_energy.update_layout(yaxis_title="Energy (kWh)")
-    fig_energy.update_traces(hovertemplate='<b>%{x}</b><br>Energy: %{y:.2f} kWh<br><extra></extra>')
+    fig_energy.update_layout(yaxis_title="Units (kWh)")
     st.plotly_chart(fig_energy, use_container_width=True)
     
     # Legend for the chart
     st.markdown("""
     **Chart Legend:**
-    - ☀️ **Solar (Yellow)** - Energy from solar panels (PV Input Power)
-    - ⚡ **Grid (Blue)** - Energy from utility/power grid (Grid Power Input)  
-    - 🔋 **Battery (Green)** - Energy consumed from battery (discharge)
-    - 🏠 **Load (Red)** - Total energy consumed by home (AC Output Active Power Total)
-    
-    **📝 Important:** Load = AC Output Active Power Total (W) - Ye aapke ghar ke appliances ki actual power consumption hai jo inverter output deta hai.
+    - ☀️ **Solar (Yellow)** - Solar panels se
+    - ⚡ **Grid (Blue)** - Grid se khareeda  
+    - 🏠 **Load (Red)** - Ghar ka total load
     """)
-    
-    # Also show battery discharge chart
-    if daily_energy['battery_discharge_kwh'].sum() > 0:
-        fig_battery = px.bar(
-            daily_energy, x='date', y='battery_discharge_kwh',
-            title="Daily Battery Discharge Energy (kWh)",
-            color_discrete_sequence=['#00CC96']
-        )
-        fig_battery.update_layout(yaxis_title="Energy (kWh)")
-        st.plotly_chart(fig_battery, use_container_width=True)
     
     # Show savings summary
     st.subheader("💰 Solar Savings Summary")
