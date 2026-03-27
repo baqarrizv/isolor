@@ -171,10 +171,13 @@ if df is not None:
         st.subheader(f"📊 Energy Breakdown for {latest_day['date']}")
         
         col1, col2, col3, col4 = st.columns(4)
-        col1.metric("☀️ Solar Energy", f"{latest_day['solar_kwh']:.2f} kWh")
-        col2.metric("⚡ Grid Energy", f"{latest_day['utility_kwh']:.2f} kWh")
-        col3.metric("🔋 Battery Used", f"{latest_day['battery_discharge_kwh']:.2f} kWh")
-        col4.metric("🏠 Total Load", f"{latest_day['load_kwh']:.2f} kWh")
+        col1.metric("☀️ Solar Energy", f"{latest_day['solar_kwh']:.2f} kWh", help="Total solar energy generated and used")
+        col2.metric("⚡ Grid Energy", f"{latest_day['utility_kwh']:.2f} kWh", help="Total energy imported from utility grid")
+        col3.metric("🔋 Battery Used", f"{latest_day['battery_discharge_kwh']:.2f} kWh", help="Total energy consumed from battery (discharge)")
+        col4.metric("🏠 Total Load", f"{latest_day['load_kwh']:.2f} kWh", help="Total energy consumed by home (from AC Output Active Power Total)")
+        
+        # Show what column is used for load calculation
+        st.caption("📝 Load calculation: AC Output Active Power Total (W) → converted to kWh")
         
         # Calculate percentages
         total_sources = latest_day['solar_kwh'] + latest_day['utility_kwh'] + latest_day['battery_discharge_kwh']
@@ -220,10 +223,12 @@ if df is not None:
     # Legend for the chart
     st.markdown("""
     **Chart Legend:**
-    - ☀️ **Solar (Yellow)** - Energy from solar panels
-    - ⚡ **Grid (Blue)** - Energy from utility/power grid  
+    - ☀️ **Solar (Yellow)** - Energy from solar panels (PV Input Power)
+    - ⚡ **Grid (Blue)** - Energy from utility/power grid (Grid Power Input)  
     - 🔋 **Battery (Green)** - Energy consumed from battery (discharge)
-    - 🏠 **Load (Red)** - Total energy consumed by home
+    - 🏠 **Load (Red)** - Total energy consumed by home (AC Output Active Power Total)
+    
+    **📝 Important:** Load = AC Output Active Power Total (W) - Ye aapke ghar ke appliances ki actual power consumption hai jo inverter output deta hai.
     """)
     
     # Also show battery discharge chart
