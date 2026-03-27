@@ -16,7 +16,7 @@ data_source = st.radio("Choose Data Source:", ["🔗 Google Sheet Link", "📁 U
 df = None
 
 # Default Google Sheet URL (hardcoded)
-DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1Q4FFhgtqgjMx3_E-v9OXxdPaeGf37mLRS2VmIgDUFEQ/pub?output=xlsx"
+DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1Q4FFhgtqgjMx3_E-v9OXxdPaeGf37mLRS2VmIgDUFEQ/edit?usp=sharing"
 
 if data_source == "🔗 Google Sheet Link":
     # Google Sheet option - use hardcoded URL by default
