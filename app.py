@@ -186,12 +186,66 @@ if uploaded_file:
     # Prepare data
     day_df_sorted = day_df.sort_values(datetime_col).reset_index(drop=True).copy()
     
-    # Create one main line chart
+    # Create hover_data dict - shows all parameters on hover
+    hover_data = {}
+    for col in display_cols:
+        if col != main_col:  # Skip main col as it's already shown
+            hover_data[col] = ':.2f'  # Format to 2 decimal places
+    
+    # Also add time and mode to hover
+    hover_data[datetime_col] = ':%H:%M:%S'
+    hover_data[mode_col] = True
+    
+    # Create one main line chart with ALL parameters in hover
     fig_main = px.line(day_df_sorted, x=datetime_col, y=main_col,
-                       title="AC Output Active Power Total",
-                       markers=True)
+                       title="AC Output Active Power Total - Hover to see all parameters",
+                       markers=True,
+                       hover_data=hover_data)
+    
+    # Update layout for unified hover mode
+    fig_main.update_layout(
+        hovermode='closest',
+        hoverdistance=-1
+    )
     
     st.plotly_chart(fig_main, use_container_width=True)
+    
+    # Show interactive chart with ALL parameters visible at once (alternative view)
+    st.write("📊 **All Parameters Timeline (Hover on any point to see all values)**")
+    
+    # Get all column names for display
+    all_hover_cols = [c for c in display_cols if c != main_col]
+    
+    # Create a chart with all key parameters as lines using wide format
+    fig_all_params = px.line(day_df_sorted, x=datetime_col, y=display_cols,
+                              title="All Key Parameters - Hover shows ALL parameter values at that point",
+                              markers=True)
+    
+    fig_all_params.update_layout(
+        hovermode='x unified',
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        )
+    )
+    
+    # Custom hover template showing ALL parameters at that time point
+    param_template = "<b>Time:</b> %{x}<br>"
+    for i, col in enumerate(display_cols):
+        param_template += f"<b>{col}:</b> %{{y:{i}}}<br>"
+    param_template += "<extra></extra>"
+    
+    # For wide format, each trace has its own y value, so we show all traces
+    fig_all_params.update_traces(hovertemplate="<b>%{x}</b><br>%{fullData.name}: %{y}<extra></extra>")
+    
+    st.plotly_chart(fig_all_params, use_container_width=True)
+    
+    # Add explanation
+    st.info("💡 **Hover anywhere on the chart** to see ALL parameter values at that specific time point.")
+    st.markdown("**Key Parameters shown:** " + ", ".join(display_cols))
     
     # Show all parameter values in a table format below
     st.write("**All Parameter Values (for reference):**")
