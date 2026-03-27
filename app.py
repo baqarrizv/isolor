@@ -391,6 +391,51 @@ if df is not None:
     )
     
     st.plotly_chart(fig_voltage, use_container_width=True)
+    
+    # Separate Battery Voltage Graph
+    st.subheader("🔋 Battery Voltage Trend")
+    
+    # Find battery_voltage column
+    battery_col = None
+    for col in day_df_sorted.columns:
+        if 'battery_voltage' in col.lower():
+            battery_col = col
+            break
+    
+    if battery_col:
+        # Create battery voltage chart
+        fig_battery = px.line(day_df_sorted, x=datetime_col, y=battery_col,
+                             title="Battery Voltage Trend - Hover to see all parameters",
+                             markers=True)
+        
+        # Build custom hover with key params
+        battery_hover = f"<b>Battery Voltage (V)</b>: %{{y:.2f}}<br>"
+        for i, col in enumerate(display_cols):
+            if col != battery_col:
+                friendly = custom_labels.get(col, col)
+                battery_hover += f"<b>{friendly}</b>: %{{customdata[{i}]}}<br>"
+        
+        if work_mode_col:
+            battery_hover += f"<b>Work Mode</b>: %{{customdata[{len([c for c in display_cols if c != battery_col])}]}}<br>"
+        battery_hover += f"<b>Time</b>: %{{x}}"
+        
+        # Prepare customdata
+        battery_customdata = []
+        other_battery_cols = [c for c in display_cols if c != battery_col]
+        for _, row in day_df_sorted.iterrows():
+            row_data = []
+            for col in other_battery_cols:
+                val = row[col] if pd.notna(row[col]) else 0
+                row_data.append(f"{val:.2f}")
+            if work_mode_col:
+                row_data.append(str(row[work_mode_col]))
+            battery_customdata.append(tuple(row_data))
+        
+        fig_battery.update_traces(hovertemplate=battery_hover, customdata=battery_customdata)
+        fig_battery.update_layout(hovermode='closest', hoverdistance=-1)
+        st.plotly_chart(fig_battery, use_container_width=True)
+    else:
+        st.warning("Battery Voltage column not found")
 
     # One main graph with AC Output Active Power Total - hover shows all values
     st.header("📊 AC Output Active Power Total (W) - Hover for all values")
