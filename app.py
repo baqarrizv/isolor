@@ -182,29 +182,30 @@ if df is not None:
     
     st.dataframe(daily_display, use_container_width=True)
     
-    # Show detailed breakdown for the latest day
-    latest_day = daily_energy.iloc[-1] if len(daily_energy) > 0 else None
-    if latest_day is not None:
-        st.subheader(f"📊 ek din ka purа breakdown: {latest_day['date']}")
-        col_a, col_b, col_c = st.columns(3)
-        col_a.metric("☀️ Solar se", f"{latest_day['solar_kwh']:.2f} units")
-        col_b.metric("⚡ Grid se", f"{latest_day['utility_kwh']:.2f} units")
-        col_c.metric("🏠 Total Load", f"{latest_day['load_kwh']:.2f} units")
-        
-        # Calculate percentages
-        total_sources = latest_day['solar_kwh'] + latest_day['utility_kwh']
-        if total_sources > 0:
-            solar_pct = (latest_day['solar_kwh'] / total_sources) * 100
-            grid_pct = (latest_day['utility_kwh'] / total_sources) * 100
+    # Show detailed breakdown for the selected date
+    selected_day_data = daily_energy[daily_energy['date'] == selected_date]
+        if len(selected_day_data) > 0:
+            selected_day = selected_day_data.iloc[0]
+            st.subheader(f"📊 ek din ka purа breakdown: {selected_day['date']}")
+            col_a, col_b, col_c = st.columns(3)
+            col_a.metric("☀️ Solar se", f"{selected_day['solar_kwh']:.2f} units")
+            col_b.metric("⚡ Grid se", f"{selected_day['utility_kwh']:.2f} units")
+            col_c.metric("🏠 Total Load", f"{selected_day['load_kwh']:.2f} units")
             
-            source_df = pd.DataFrame({
-                'Source': ['☀️ Solar', '⚡ Grid'],
-                'Energy (kWh)': [latest_day['solar_kwh'], latest_day['utility_kwh']]
-            })
-            
-            fig_pie = px.pie(source_df, values='Energy (kWh)', names='Source', 
-                           title="Energy Sources")
-            st.plotly_chart(fig_pie, use_container_width=True)
+            # Calculate percentages
+            total_sources = selected_day['solar_kwh'] + selected_day['utility_kwh']
+            if total_sources > 0:
+                solar_pct = (selected_day['solar_kwh'] / total_sources) * 100
+                grid_pct = (selected_day['utility_kwh'] / total_sources) * 100
+                
+                source_df = pd.DataFrame({
+                    'Source': ['☀️ Solar', '⚡ Grid'],
+                    'Energy (kWh)': [selected_day['solar_kwh'], selected_day['utility_kwh']]
+                })
+                
+                fig_pie = px.pie(source_df, values='Energy (kWh)', names='Source', 
+                               title="Energy Sources")
+                st.plotly_chart(fig_pie, use_container_width=True)
 
     # Bar chart - Solar vs Grid vs Load
     fig_energy = px.bar(
@@ -223,7 +224,7 @@ if df is not None:
     st.plotly_chart(fig_energy, use_container_width=True)
     
 
-    # Sidebar filters
+    # Sidebar date filter - moved before breakdown
     date_options = sorted(df["date"].unique(), reverse=True)
     if len(date_options) == 0:
         st.error("⚠️ No valid dates found in the data.")
