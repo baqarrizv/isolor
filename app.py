@@ -46,18 +46,22 @@ else:
     # Upload Excel File option
     uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx", "xls"])
     
-    # Check if local file exists and load it
-    local_file = 'simplefile.xlsx'
-    if os.path.exists(local_file):
+    # If user uploaded a file, use it. Otherwise check for local file.
+    if uploaded_file is not None:
         try:
-            df = pd.read_excel(local_file)
-            st.success(f"Loaded local file: {local_file} ✅")
+            df = pd.read_excel(uploaded_file)
+            st.success(f"Loaded uploaded file: {uploaded_file.name} ✅")
         except Exception as e:
-            st.warning(f"Could not load local file: {e}")
-            if uploaded_file:
-                df = pd.read_excel(uploaded_file)
-    elif uploaded_file:
-        df = pd.read_excel(uploaded_file)
+            st.error(f"Error reading uploaded file: {e}")
+    else:
+        # Check if local file exists and load it
+        local_file = 'simplefile.xlsx'
+        if os.path.exists(local_file):
+            try:
+                df = pd.read_excel(local_file)
+                st.success(f"Loaded local file: {local_file} ✅")
+            except Exception as e:
+                st.warning(f"Could not load local file: {e}")
 
 # Rest of the code remains the same
 if df is not None:
