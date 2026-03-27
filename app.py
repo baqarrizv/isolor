@@ -118,22 +118,22 @@ if df is not None:
     line_time_hours = line_records['time_diff'].sum() if len(line_records) > 0 else 0
     battery_time_hours = battery_records['time_diff'].sum() if len(battery_records) > 0 else 0
     
-    st.subheader("⚡ Inverter Operation Mode Time Calculation (Kia kar raha hai)")
+    st.subheader("⚡ Inverter Operation Mode Time Calculation")
     
     # Show as bar chart
     mode_data = pd.DataFrame({
-        'Mode': ['Grid/Mains (L)', 'Battery (B)'],
+        'Mode': ['Grid (L)', 'Battery (B)'],
         'Hours': [line_time_hours, battery_time_hours],
         'Records': [len(line_records), len(battery_records)]
     })
     fig_mode = px.bar(mode_data, x='Mode', y='Hours', title="Total Time in Each Mode (Actual Time Between Rows)", color='Mode',
-                      color_discrete_map={'Grid/Mains (L)': '#FFD700', 'Battery (B)': '#00CC96'})
+                      color_discrete_map={'Grid (L)': '#FFD700', 'Battery (B)': '#00CC96'})
     fig_mode.update_layout(yaxis_title="Hours")
     st.plotly_chart(fig_mode, use_container_width=True)
     
     # Also show as metrics
     col1, col2 = st.columns(2)
-    col1.metric("🔌 Grid/Mains (L) Time", f"{round(line_time_hours, 2)} hours")
+    col1.metric("🔌 Grid (L) Time", f"{round(line_time_hours, 2)} hours")
     col2.metric("🔋 Battery Mode Time", f"{round(battery_time_hours, 2)} hours")
     
     # Show mode distribution over time as a chart (per row) with start/end times
@@ -147,14 +147,14 @@ if df is not None:
                                title="Mode Timeline per Row (Click points for details)", 
                                color_discrete_map={'L': '#FFD700', 'B': '#00CC96'},
                                hover_data={'mode_numeric': False, 'Time': True, datetime_col: False})
-    fig_timeline.update_layout(yaxis_title="Mode", yaxis=dict(tickvals=[0, 1], ticktext=['Battery (B)', 'Grid/Mains (L)']))
+    fig_timeline.update_layout(yaxis_title="Mode", yaxis=dict(tickvals=[0, 1], ticktext=['Battery (B)', 'Grid (L)']))
     fig_timeline.update_traces(marker=dict(size=10))
     st.plotly_chart(fig_timeline, use_container_width=True)
     
 
     # Battery Full (near 29V)
     full_battery = day_df[(day_df[voltage_col] >= 28.5)]
-    st.subheader("🔋 Battery Status (Kitna charge hai?)")
+    st.subheader("🔋 Battery Status")
     col1, col2 = st.columns(2)
     col1.metric("Full Battery (≈100%)", f"{len(full_battery)} records - Voltage ≥ 28.5V")
     
@@ -172,7 +172,7 @@ if df is not None:
         (1 - (battery_mode_time / len(day_df))) * 30
     )
 
-    st.subheader("📊 Inverter Performance (Kitna behtareen kaam kar raha hai)")
+    st.subheader("📊 Inverter Performance")
     st.progress(int(performance_score))
     st.write(f"**Score: {round(performance_score,2)} / 100**")
     
@@ -207,8 +207,7 @@ if df is not None:
     day_df_sorted = day_df.sort_values(datetime_col).reset_index(drop=True).copy()
     
     # Voltage Graph with hover showing all parameters
-    st.subheader("🔋 Battery Voltage Trend (Hover for all values)")
-    st.write("Hover on any point to see all parameter values at that time")
+    st.subheader("🔋 Battery Voltage Trend")
     
     # Create hover_data for voltage chart
     hover_data_voltage = {}
@@ -234,7 +233,6 @@ if df is not None:
 
     # One main graph with AC Output Active Power Total - hover shows all values
     st.header("📊 AC Output Active Power Total - Hover for all values")
-    st.write("Hover on any point to see all parameter values at that time")
     
     # Main column is AC Output Active Power Total
     main_col = None
