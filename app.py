@@ -90,14 +90,6 @@ if df is not None:
     # ===== DAILY ENERGY SUMMARY SECTION =====
     st.header("📊 Daily Energy Summary")
 
-    # Configurable price per kWh
-    unit_price = st.sidebar.number_input(
-        "Electricity Price ($/kWh)", 
-        min_value=0.0, 
-        value=0.15,
-        step=0.01
-    )
-
     # Option to choose calculation method: Fixed 5 min or Average based
     calc_method = st.sidebar.radio(
         "Calculation Method:",
@@ -118,7 +110,7 @@ if df is not None:
             battery_voltage_col = col
     
     # Energy calculation function - USE FIXED 5 MINUTES per row
-    def calculate_daily_energy(df, datetime_col, unit_price, calc_method):
+    def calculate_daily_energy(df, datetime_col, calc_method):
         df_calc = df.copy()
         df_calc = df_calc.fillna(0)
         
@@ -170,22 +162,19 @@ if df is not None:
         record_counts = df_calc.groupby('date').size().reset_index(name='total_records')
         daily = daily.merge(record_counts, on='date')
         
-        daily['savings'] = daily['solar_kwh'] * unit_price
-        
         return daily
 
     # Calculate and display
-    daily_energy = calculate_daily_energy(df, datetime_col, unit_price, calc_method)
+    daily_energy = calculate_daily_energy(df, datetime_col, calc_method)
     
     # Format the dataframe for better display
     daily_display = daily_energy.copy()
     daily_display['solar_kwh'] = daily_display['solar_kwh'].round(2)
     daily_display['utility_kwh'] = daily_display['utility_kwh'].round(2)
     daily_display['load_kwh'] = daily_display['load_kwh'].round(2)
-    daily_display['savings'] = daily_display['savings'].round(2)
     
     # Rename columns for better display
-    daily_display.columns = ['Date', 'Solar (kWh)', 'Grid (kWh)', 'Load (kWh)', 'Records', 'Savings ($)']
+    daily_display.columns = ['Date', 'Solar (kWh)', 'Grid (kWh)', 'Load (kWh)', 'Records']
     
     st.dataframe(daily_display, use_container_width=True)
     
