@@ -477,9 +477,44 @@ if df is not None:
     if main_col is None and display_cols:
         main_col = display_cols[0]
     
+    # Create AC Output chart with custom hover (like Grid Voltage chart)
     fig_main = px.line(day_df_sorted, x=datetime_col, y=main_col,
                        title="AC Output Active Power Total",
                        markers=True)
+    
+    # Build custom hover with key params - AC Output value first, then others
+    ac_hover = f"<b>AC Output Power</b>: %{{y:.2f}} W<br>"
+    
+    # Add other columns to hover (excluding main_col and datetime_col)
+    hover_cols_for_ac = []
+    for col in display_cols:
+        col_lower = col.lower() if isinstance(col, str) else ''
+        main_col_lower = main_col.lower() if isinstance(main_col, str) else ''
+        if col_lower != main_col_lower and col not in [datetime_col, 'date', 'hour']:
+            hover_cols_for_ac.append(col)
+    
+    for i, col in enumerate(hover_cols_for_ac):
+        friendly = custom_labels.get(col, col)
+        ac_hover += f"<b>{friendly}</b>: %{{customdata[{i}]}}<br>"
+    
+    if work_mode_col:
+        ac_hover += f"<b>Work Mode</b>: %{{customdata[{len(hover_cols_for_ac)}]}}<br>"
+    ac_hover += f"<b>Time</b>: %{{x}}"
+    
+    # Prepare customdata
+    ac_customdata = []
+    for _, row in day_df_sorted.iterrows():
+        row_data = []
+        for col in hover_cols_for_ac:
+            val = row[col] if pd.notna(row[col]) else 0
+            row_data.append(f"{val:.2f}")
+        if work_mode_col:
+            row_data.append(str(row[work_mode_col]))
+        ac_customdata.append(tuple(row_data))
+    
+    fig_main.update_traces(hovertemplate=ac_hover, customdata=ac_customdata)
+    fig_main.update_layout(hovermode='closest', hoverdistance=-1)
+    
     st.plotly_chart(fig_main, use_container_width=True)
 
     # Line Mode vs Battery Mode
