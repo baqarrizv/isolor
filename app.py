@@ -423,9 +423,44 @@ if df is not None:
             break
     
     if battery_col:
+        # Create battery chart with custom hover (like Grid Voltage chart)
         fig_battery = px.line(day_df_sorted, x=datetime_col, y=battery_col,
                              title="Battery Voltage Trend",
                              markers=True)
+        
+        # Build custom hover with key params - battery voltage value first, then others
+        battery_hover = f"<b>Battery Voltage</b>: %{{y:.2f}} V<br>"
+        
+        # Add other columns to hover (excluding battery_col and datetime_col)
+        hover_cols_for_battery = []
+        for col in display_cols:
+            col_lower = col.lower() if isinstance(col, str) else ''
+            battery_col_lower = battery_col.lower() if isinstance(battery_col, str) else ''
+            if col_lower != battery_col_lower and col not in [datetime_col, 'date', 'hour']:
+                hover_cols_for_battery.append(col)
+        
+        for i, col in enumerate(hover_cols_for_battery):
+            friendly = custom_labels.get(col, col)
+            battery_hover += f"<b>{friendly}</b>: %{{customdata[{i}]}}<br>"
+        
+        if work_mode_col:
+            battery_hover += f"<b>Work Mode</b>: %{{customdata[{len(hover_cols_for_battery)}]}}<br>"
+        battery_hover += f"<b>Time</b>: %{{x}}"
+        
+        # Prepare customdata
+        battery_customdata = []
+        for _, row in day_df_sorted.iterrows():
+            row_data = []
+            for col in hover_cols_for_battery:
+                val = row[col] if pd.notna(row[col]) else 0
+                row_data.append(f"{val:.2f}")
+            if work_mode_col:
+                row_data.append(str(row[work_mode_col]))
+            battery_customdata.append(tuple(row_data))
+        
+        fig_battery.update_traces(hovertemplate=battery_hover, customdata=battery_customdata)
+        fig_battery.update_layout(hovermode='closest', hoverdistance=-1)
+        
         st.plotly_chart(fig_battery, use_container_width=True)
     else:
         st.warning("Battery Voltage column not found")
