@@ -375,19 +375,41 @@ if df is not None:
     # Grid Voltage Graph
     st.subheader("📈 Grid Voltage Trend")
     
-    # Create hover_data for voltage chart
-    hover_data_voltage = {}
-    for col in display_cols:
-        if col != voltage_col:
-            hover_data_voltage[col] = ':.2f'
-    
-    hover_data_voltage[datetime_col] = ':%H:%M:%S'
-    
-    # Create voltage chart
+    # Create voltage chart with custom hover (like Load Output chart)
     fig_voltage = px.line(day_df_sorted, x=datetime_col, y=voltage_col,
                          title="Grid Voltage Trend",
-                         markers=True,
-                         hover_data=hover_data_voltage)
+                         markers=True)
+    
+    # Build custom hover with key params - voltage value first, then others
+    voltage_hover = f"<b>Grid Voltage</b>: %{{y:.2f}} V<br>"
+    
+    # Add other columns to hover (excluding voltage_col and datetime_col)
+    hover_cols_for_voltage = []
+    for col in display_cols:
+        if col.lower() != voltage_col.lower() and col not in [datetime_col, 'date', 'hour']:
+            hover_cols_for_voltage.append(col)
+    
+    for i, col in enumerate(hover_cols_for_voltage):
+        friendly = custom_labels.get(col, col)
+        voltage_hover += f"<b>{friendly}</b>: %{{customdata[{i}]}}<br>"
+    
+    if work_mode_col:
+        voltage_hover += f"<b>Work Mode</b>: %{{customdata[{len(hover_cols_for_voltage)}]}}<br>"
+    voltage_hover += f"<b>Time</b>: %{{x}}"
+    
+    # Prepare customdata
+    voltage_customdata = []
+    for _, row in day_df_sorted.iterrows():
+        row_data = []
+        for col in hover_cols_for_voltage:
+            val = row[col] if pd.notna(row[col]) else 0
+            row_data.append(f"{val:.2f}")
+        if work_mode_col:
+            row_data.append(str(row[work_mode_col]))
+        voltage_customdata.append(tuple(row_data))
+    
+    fig_voltage.update_traces(hovertemplate=voltage_hover, customdata=voltage_customdata)
+    fig_voltage.update_layout(hovermode='closest', hoverdistance=-1)
     
     st.plotly_chart(fig_voltage, use_container_width=True)
     
