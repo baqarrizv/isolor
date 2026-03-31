@@ -108,7 +108,7 @@ if df is not None:
         
         if calc_method == "Fixed 5 Minutes":
             time_per_row_hours = 5 / 60  # 0.0833 hours
-            st.write(f"Debug: Each row = 5 minutes = {time_per_row_hours:.4f} hours")
+            st.sidebar.write(f"**Debug:** Each row = 5 minutes = {time_per_row_hours:.4f} hours")
         else:
             df_calc = df_calc.sort_values(datetime_col)
             time_diffs = df_calc[datetime_col].diff().dropna()
@@ -116,10 +116,10 @@ if df is not None:
             if len(time_diffs) > 0:
                 avg_minutes = time_diffs.mean().total_seconds() / 60
                 time_per_row_hours = avg_minutes / 60
-                st.write(f"Debug: Auto-detected average interval = {avg_minutes:.2f} minutes = {time_per_row_hours:.4f} hours")
+                st.sidebar.write(f"**Debug:** Auto-detected avg interval = {avg_minutes:.2f} min = {time_per_row_hours:.4f} hours")
             else:
                 time_per_row_hours = 5 / 60
-                st.write(f"Debug: Could not detect, using fallback = 5 minutes = {time_per_row_hours:.4f} hours")
+                st.sidebar.write(f"**Debug:** Could not detect, using fallback = 5 min = {time_per_row_hours:.4f} hours")
         
         # Energy (kWh) = Power (W) × time_per_row_hours / 1000
         df_calc['solar_kwh'] = df_calc['pv_input_power_1'] * time_per_row_hours / 1000
@@ -140,9 +140,9 @@ if df is not None:
         total_solar_power = df_calc['pv_input_power_1'].sum()
         total_solar_kwh = df_calc['solar_kwh'].sum()
         
-        st.write(f"Raw Solar Power Sum = {total_solar_power} W")
-        st.write(f"Solar kWh (using {calc_method}) = {total_solar_kwh:.2f} kWh")
-        st.write(f"Calculation: {total_solar_power} × {time_per_row_hours:.4f} / 1000 = {total_solar_kwh:.2f} kWh")
+        st.sidebar.write(f"**Raw Solar Power Sum:** {total_solar_power} W")
+        st.sidebar.write(f"**Solar kWh ({calc_method}):** {total_solar_kwh:.2f} kWh")
+        st.sidebar.write(f"**Calculation:** {total_solar_power} × {time_per_row_hours:.4f} / 1000 = {total_solar_kwh:.2f} kWh")
         
         # Group by date
         daily = df_calc.groupby('date').agg({
