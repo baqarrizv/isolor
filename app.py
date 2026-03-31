@@ -171,8 +171,8 @@ if df is not None:
     # Rename columns for better display
     daily_display.columns = ['Date', 'Solar (kWh)', 'Grid (kWh)', 'Load (kWh)', 'Battery (kWh)', 'Records']
     
-    # ===== DAILY ENERGY CHART (AT START - EXPANDED BY DEFAULT) =====
-    with st.expander("📊 Daily Energy Chart"):
+    # ===== DAILY ENERGY CHART (AFTER DATE SELECTION - COLLAPSED BY DEFAULT) =====
+    with st.expander("📊 Daily Energy Chart", expanded=False):
         fig_energy = px.bar(
             daily_energy, x='date', 
             y=['solar_kwh', 'utility_kwh', 'load_kwh', 'battery_kwh'],
@@ -361,57 +361,57 @@ if df is not None:
             work_mode_col = col
             break
     
-    # Grid Voltage Graph
-    st.subheader("📈 Grid Voltage Trend")
-    
-    # Create voltage chart with custom hover (like Load Output chart)
-    fig_voltage = px.line(day_df_sorted, x=datetime_col, y=voltage_col,
-                         title="Grid Voltage Trend",
-                         markers=True)
-    
-    # Build custom hover with key params - voltage value first, then others
-    voltage_hover = f"<b>Grid Voltage</b>: %{{y:.2f}} V<br>"
-    
-    # Add other columns to hover (excluding voltage_col and datetime_col)
-    hover_cols_for_voltage = []
-    for col in display_cols:
-        if col.lower() != voltage_col.lower() and col not in [datetime_col, 'date', 'hour']:
-            hover_cols_for_voltage.append(col)
-    
-    for i, col in enumerate(hover_cols_for_voltage):
-        friendly = custom_labels.get(col, col)
-        voltage_hover += f"<b>{friendly}</b>: %{{customdata[{i}]}}<br>"
-    
-    if work_mode_col:
-        voltage_hover += f"<b>Work Mode</b>: %{{customdata[{len(hover_cols_for_voltage)}]}}<br>"
-    voltage_hover += f"<b>Time</b>: %{{x}}"
-    
-    # Prepare customdata
-    voltage_customdata = []
-    for _, row in day_df_sorted.iterrows():
-        row_data = []
-        for col in hover_cols_for_voltage:
-            val = row[col] if pd.notna(row[col]) else 0
-            row_data.append(f"{val:.2f}")
+    # Grid Voltage Graph (COLLAPSED BY DEFAULT)
+    with st.expander("📈 Grid Voltage Trend", expanded=False):
+        
+        # Create voltage chart with custom hover (like Load Output chart)
+        fig_voltage = px.line(day_df_sorted, x=datetime_col, y=voltage_col,
+                             title="Grid Voltage Trend",
+                             markers=True)
+        
+        # Build custom hover with key params - voltage value first, then others
+        voltage_hover = f"<b>Grid Voltage</b>: %{{y:.2f}} V<br>"
+        
+        # Add other columns to hover (excluding voltage_col and datetime_col)
+        hover_cols_for_voltage = []
+        for col in display_cols:
+            if col.lower() != voltage_col.lower() and col not in [datetime_col, 'date', 'hour']:
+                hover_cols_for_voltage.append(col)
+        
+        for i, col in enumerate(hover_cols_for_voltage):
+            friendly = custom_labels.get(col, col)
+            voltage_hover += f"<b>{friendly}</b>: %{{customdata[{i}]}}<br>"
+        
         if work_mode_col:
-            row_data.append(str(row[work_mode_col]))
-        voltage_customdata.append(tuple(row_data))
+            voltage_hover += f"<b>Work Mode</b>: %{{customdata[{len(hover_cols_for_voltage)}]}}<br>"
+        voltage_hover += f"<b>Time</b>: %{{x}}"
+        
+        # Prepare customdata
+        voltage_customdata = []
+        for _, row in day_df_sorted.iterrows():
+            row_data = []
+            for col in hover_cols_for_voltage:
+                val = row[col] if pd.notna(row[col]) else 0
+                row_data.append(f"{val:.2f}")
+            if work_mode_col:
+                row_data.append(str(row[work_mode_col]))
+            voltage_customdata.append(tuple(row_data))
+        
+        fig_voltage.update_traces(hovertemplate=voltage_hover, customdata=voltage_customdata)
+        fig_voltage.update_layout(hovermode='closest', hoverdistance=-1)
+        
+        st.plotly_chart(fig_voltage, use_container_width=True)
     
-    fig_voltage.update_traces(hovertemplate=voltage_hover, customdata=voltage_customdata)
-    fig_voltage.update_layout(hovermode='closest', hoverdistance=-1)
-    
-    st.plotly_chart(fig_voltage, use_container_width=True)
-    
-    # Battery Voltage Graph
-    st.subheader("🔋 Battery Voltage Trend")
-    
-    battery_col = None
-    for col in day_df_sorted.columns:
-        if 'battery_voltage' in col.lower():
-            battery_col = col
-            break
-    
-    if battery_col:
+    # Battery Voltage Graph (COLLAPSED BY DEFAULT)
+    with st.expander("🔋 Battery Voltage Trend", expanded=False):
+        
+        battery_col = None
+        for col in day_df_sorted.columns:
+            if 'battery_voltage' in col.lower():
+                battery_col = col
+                break
+        
+        if battery_col:
         # Create battery chart with custom hover (like Grid Voltage chart)
         fig_battery = px.line(day_df_sorted, x=datetime_col, y=battery_col,
                              title="Battery Voltage Trend",
@@ -454,79 +454,79 @@ if df is not None:
     else:
         st.warning("Battery Voltage column not found")
 
-    # AC Output Active Power Total
-    st.header("📊 AC Output Active Power Total (W)")
-    
-    main_col = None
-    for col in display_cols:
-        col_lower = col.lower()
-        if 'ac_output_active_power_total' in col_lower:
-            main_col = col
-            break
-    if main_col is None and display_cols:
-        main_col = display_cols[0]
-    
-    # Create AC Output chart with custom hover (like Grid Voltage chart)
-    fig_main = px.line(day_df_sorted, x=datetime_col, y=main_col,
-                       title="AC Output Active Power Total",
-                       markers=True)
-    
-    # Build custom hover with key params - AC Output value first, then others
-    ac_hover = f"<b>AC Output Power</b>: %{{y:.2f}} W<br>"
-    
-    # Add other columns to hover (excluding main_col and datetime_col)
-    hover_cols_for_ac = []
-    for col in display_cols:
-        col_lower = col.lower() if isinstance(col, str) else ''
-        main_col_lower = main_col.lower() if isinstance(main_col, str) else ''
-        if col_lower != main_col_lower and col not in [datetime_col, 'date', 'hour']:
-            hover_cols_for_ac.append(col)
-    
-    for i, col in enumerate(hover_cols_for_ac):
-        friendly = custom_labels.get(col, col)
-        ac_hover += f"<b>{friendly}</b>: %{{customdata[{i}]}}<br>"
-    
-    if work_mode_col:
-        ac_hover += f"<b>Work Mode</b>: %{{customdata[{len(hover_cols_for_ac)}]}}<br>"
-    ac_hover += f"<b>Time</b>: %{{x}}"
-    
-    # Prepare customdata
-    ac_customdata = []
-    for _, row in day_df_sorted.iterrows():
-        row_data = []
-        for col in hover_cols_for_ac:
-            val = row[col] if pd.notna(row[col]) else 0
-            row_data.append(f"{val:.2f}")
+    # AC Output Active Power Total (COLLAPSED BY DEFAULT)
+    with st.expander("📊 AC Output Active Power Total (W)", expanded=False):
+        
+        main_col = None
+        for col in display_cols:
+            col_lower = col.lower()
+            if 'ac_output_active_power_total' in col_lower:
+                main_col = col
+                break
+        if main_col is None and display_cols:
+            main_col = display_cols[0]
+        
+        # Create AC Output chart with custom hover (like Grid Voltage chart)
+        fig_main = px.line(day_df_sorted, x=datetime_col, y=main_col,
+                           title="AC Output Active Power Total",
+                           markers=True)
+        
+        # Build custom hover with key params - AC Output value first, then others
+        ac_hover = f"<b>AC Output Power</b>: %{{y:.2f}} W<br>"
+        
+        # Add other columns to hover (excluding main_col and datetime_col)
+        hover_cols_for_ac = []
+        for col in display_cols:
+            col_lower = col.lower() if isinstance(col, str) else ''
+            main_col_lower = main_col.lower() if isinstance(main_col, str) else ''
+            if col_lower != main_col_lower and col not in [datetime_col, 'date', 'hour']:
+                hover_cols_for_ac.append(col)
+        
+        for i, col in enumerate(hover_cols_for_ac):
+            friendly = custom_labels.get(col, col)
+            ac_hover += f"<b>{friendly}</b>: %{{customdata[{i}]}}<br>"
+        
         if work_mode_col:
-            row_data.append(str(row[work_mode_col]))
-        ac_customdata.append(tuple(row_data))
-    
-    fig_main.update_traces(hovertemplate=ac_hover, customdata=ac_customdata)
-    fig_main.update_layout(hovermode='closest', hoverdistance=-1)
-    
-    st.plotly_chart(fig_main, use_container_width=True)
+            ac_hover += f"<b>Work Mode</b>: %{{customdata[{len(hover_cols_for_ac)}]}}<br>"
+        ac_hover += f"<b>Time</b>: %{{x}}"
+        
+        # Prepare customdata
+        ac_customdata = []
+        for _, row in day_df_sorted.iterrows():
+            row_data = []
+            for col in hover_cols_for_ac:
+                val = row[col] if pd.notna(row[col]) else 0
+                row_data.append(f"{val:.2f}")
+            if work_mode_col:
+                row_data.append(str(row[work_mode_col]))
+            ac_customdata.append(tuple(row_data))
+        
+        fig_main.update_traces(hovertemplate=ac_hover, customdata=ac_customdata)
+        fig_main.update_layout(hovermode='closest', hoverdistance=-1)
+        
+        st.plotly_chart(fig_main, use_container_width=True)
 
-    # Solar Mode vs Grid Mode vs Battery Mode - Based on power values
-    day_df[mode_col] = day_df[mode_col].astype(str)
-    day_df = day_df.sort_values(datetime_col).reset_index(drop=True)
-    day_df['time_diff'] = day_df[datetime_col].diff().dt.total_seconds() / 3600
-    day_df['time_diff'] = day_df['time_diff'].fillna(1/60)
-    
-    # Define modes based on power values (mutually exclusive):
-    # - Grid: grid_power_input_active_total > 0
-    # - Solar: grid = 0 AND pv_input_power_1 > 0
-    # - Battery: grid = 0 AND pv_input_power_1 = 0
-    
-    grid_records = day_df[day_df['grid_power_input_active_total'] > 0]
-    solar_records = day_df[(day_df['grid_power_input_active_total'] == 0) & (day_df['pv_input_power_1'] > 0)]
-    battery_records = day_df[(day_df['grid_power_input_active_total'] == 0) & (day_df['pv_input_power_1'] == 0)]
-    
-    grid_time_hours = grid_records['time_diff'].sum() if len(grid_records) > 0 else 0
-    solar_time_hours = solar_records['time_diff'].sum() if len(solar_records) > 0 else 0
-    battery_time_hours = battery_records['time_diff'].sum() if len(battery_records) > 0 else 0
-    
-    # Solar Mode vs Grid Mode vs Battery Mode - Based on power values (AT START - EXPANDED BY DEFAULT)
-    with st.expander("⚡ Inverter Operation Mode Time Calculation"):
+    # Solar Mode vs Grid Mode vs Battery Mode - Based on power values (COLLAPSED BY DEFAULT)
+    with st.expander("⚡ Inverter Operation Mode Time Calculation", expanded=False):
+        
+        # Calculate mode times based on power values
+        day_df[mode_col] = day_df[mode_col].astype(str)
+        day_df = day_df.sort_values(datetime_col).reset_index(drop=True)
+        day_df['time_diff'] = day_df[datetime_col].diff().dt.total_seconds() / 3600
+        day_df['time_diff'] = day_df['time_diff'].fillna(1/60)
+        
+        # Define modes based on power values (mutually exclusive):
+        # - Grid: grid_power_input_active_total > 0
+        # - Solar: grid = 0 AND pv_input_power_1 > 0
+        # - Battery: grid = 0 AND pv_input_power_1 = 0
+        
+        grid_records = day_df[day_df['grid_power_input_active_total'] > 0]
+        solar_records = day_df[(day_df['grid_power_input_active_total'] == 0) & (day_df['pv_input_power_1'] > 0)]
+        battery_records = day_df[(day_df['grid_power_input_active_total'] == 0) & (day_df['pv_input_power_1'] == 0)]
+        
+        grid_time_hours = grid_records['time_diff'].sum() if len(grid_records) > 0 else 0
+        solar_time_hours = solar_records['time_diff'].sum() if len(solar_records) > 0 else 0
+        battery_time_hours = battery_records['time_diff'].sum() if len(battery_records) > 0 else 0
         
         mode_data = pd.DataFrame({
             'Mode': ['☀️ Solar', '⚡ Grid', '🔋 Battery'],
