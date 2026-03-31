@@ -183,7 +183,7 @@ if df is not None:
     selected_date = st.sidebar.selectbox("Select Date", date_options)
     
     # Show detailed breakdown for the selected date (Collapsed by default)
-    with st.expander(f"📊 Breakdown: {selected_date}", expanded=False):
+    with st.expander(f"📊 Breakdown: {selected_date}", expanded=True):
         selected_day_data = daily_energy[daily_energy['date'] == selected_date]
         if len(selected_day_data) > 0:
             selected_day = selected_day_data.iloc[0]
@@ -205,7 +205,7 @@ if df is not None:
             st.plotly_chart(fig_pie, use_container_width=True)
 
     # Bar chart - Solar vs Grid vs Load vs Battery (Collapsed by default)
-    with st.expander("📊 Daily Energy Chart", expanded=False):
+    with st.expander("📊 Daily Energy Chart", expanded=True):
         fig_energy = px.bar(
             daily_energy, x='date', 
             y=['solar_kwh', 'utility_kwh', 'load_kwh', 'battery_kwh'],
@@ -551,7 +551,7 @@ if df is not None:
     battery_time_hours = battery_records['time_diff'].sum() if len(battery_records) > 0 else 0
     
     # Solar Mode vs Grid Mode vs Battery Mode - Based on power values (Collapsed by default)
-    with st.expander("⚡ Inverter Operation Mode Time Calculation", expanded=False):
+    with st.expander("⚡ Inverter Operation Mode Time Calculation", expanded=True):
         
         mode_data = pd.DataFrame({
             'Mode': ['☀️ Solar', '⚡ Grid', '🔋 Battery'],
