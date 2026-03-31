@@ -98,7 +98,7 @@ if df is not None:
     calc_method = st.sidebar.radio(
         "Calculation Method:",
         ["Fixed 5 Minutes", "Average Based"],
-        index=1,
+        index=0,
         horizontal=True,
         help="Fixed 5 Minutes: Uses 5 min per row. Average Based: Auto-detects time interval from data (default)."
     )
