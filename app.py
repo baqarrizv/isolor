@@ -221,12 +221,19 @@ if df is not None:
             solar_vals[i], grid_vals[i], load_vals[i], battery_vals[i]
         ])
     
-    # Build custom hover template with variable showing which type is hovered
-    # The %{y} shows the value of the bar being hovered
-    # customdata shows all 4 values: [solar, grid, load, battery]
+    # Map trace names to friendly names with color indicators
+    trace_names = {
+        'solar_kwh': '☀️ Solar (Yellow)',
+        'utility_kwh': '⚡ Grid (Blue)',
+        'load_kwh': '🏠 Load (Red)',
+        'battery_kwh': '🔋 Battery (Green)'
+    }
+    
+    # Build custom hover template with bar name and value first, then all 4 values
+    # Using %{fullData.name} to get the trace name
     custom_hover = (
         "<b>Date: %{x}</b><br>" +
-        "<b>%{y:.2f} kWh</b><br>" +
+        "<i>%{fullData.name}</i>: <b>%{y:.2f} kWh</b><br>" +
         "------<br>" +
         "☀️ Solar: %{customdata[0]:.2f} kWh<br>" +
         "⚡ Grid: %{customdata[1]:.2f} kWh<br>" +
