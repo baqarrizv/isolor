@@ -205,13 +205,20 @@ if df is not None:
     
     # ===== DAILY ENERGY CHART (NO EXPANDER - DIRECT DISPLAY) =====
     # Prepare data for custom hover - show all 4 values for the hovered date
-    daily_energy_sorted = daily_energy.sort_values('date').reset_index(drop=True)
+    # Rename columns to friendly names for display
+    daily_energy_display = daily_energy.rename(columns={
+        'solar_kwh': 'Solar',
+        'utility_kwh': 'Grid',
+        'load_kwh': 'Load',
+        'battery_kwh': 'Battery'
+    })
+    daily_energy_sorted = daily_energy_display.sort_values('date').reset_index(drop=True)
     
-    # Get all energy values for each date
-    solar_vals = daily_energy_sorted['solar_kwh'].values
-    grid_vals = daily_energy_sorted['utility_kwh'].values
-    load_vals = daily_energy_sorted['load_kwh'].values
-    battery_vals = daily_energy_sorted['battery_kwh'].values
+    # Get all energy values for each date using friendly column names
+    solar_vals = daily_energy_sorted['Solar'].values
+    grid_vals = daily_energy_sorted['Grid'].values
+    load_vals = daily_energy_sorted['Load'].values
+    battery_vals = daily_energy_sorted['Battery'].values
     dates = daily_energy_sorted['date'].values
     
     # Calculate total for each date
@@ -231,10 +238,10 @@ if df is not None:
     
     # Map trace names to friendly names with color indicators
     trace_names = {
-        'solar_kwh': '☀️ Solar',
-        'utility_kwh': '⚡ Grid',
-        'load_kwh': '🏠 Load',
-        'battery_kwh': '🔋 Battery'
+        'Solar': '☀️ Solar',
+        'Grid': '⚡ Grid',
+        'Load': '🏠 Load',
+        'Battery': '🔋 Battery'
     }
     
     # Build custom hover template with bar name and value first, then all 4 values + total
@@ -242,25 +249,25 @@ if df is not None:
         "<b>Date: %{x}</b><br>" +
         "<i>%{fullData.name}</i>: <b>%{y:.2f} kWh</b><br>" +
         "------<br>" +
-        "☀️ Solar: %{customdata[0]:.2f} kWh<br>" +
-        "⚡ Grid: %{customdata[1]:.2f} kWh<br>" +
-        "🏠 Load: %{customdata[2]:.2f} kWh<br>" +
-        "🔋 Battery: %{customdata[3]:.2f} kWh<br>" +
+        "Solar: %{customdata[0]:.2f} kWh<br>" +
+        "Grid: %{customdata[1]:.2f} kWh<br>" +
+        "Load: %{customdata[2]:.2f} kWh<br>" +
+        "Battery: %{customdata[3]:.2f} kWh<br>" +
         "<b>Total: %{customdata[4]:.2f} kWh</b><extra></extra>"
     )
     
-    # Create the bar chart
+    # Create the bar chart with friendly column names
     fig_energy = px.bar(
         daily_energy_sorted, x='date', 
-        y=['solar_kwh', 'utility_kwh', 'load_kwh', 'battery_kwh'],
+        y=['Solar', 'Grid', 'Load', 'Battery'],
         title="Daily Energy: Solar vs Grid vs Load vs Battery (units)",
         barmode='group',
         labels={'date': 'Date', 'value': 'Units (kWh)', 'variable': 'Type'},
         color_discrete_map={
-            'solar_kwh': '#FFD700',
-            'utility_kwh': '#1E90FF',
-            'load_kwh': '#FF6347',
-            'battery_kwh': '#00CC96'
+            'Solar': '#FFD700',
+            'Grid': '#1E90FF',
+            'Load': '#FF6347',
+            'Battery': '#00CC96'
         }
     )
     
