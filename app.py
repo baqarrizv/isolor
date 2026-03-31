@@ -530,39 +530,41 @@ if df is not None:
     
     st.plotly_chart(fig_main, use_container_width=True)
 
-    # Line Mode vs Battery Mode vs Solar Mode
+    # Solar Mode vs Grid Mode vs Battery Mode - Based on power values
     day_df[mode_col] = day_df[mode_col].astype(str)
     day_df = day_df.sort_values(datetime_col).reset_index(drop=True)
     day_df['time_diff'] = day_df[datetime_col].diff().dt.total_seconds() / 3600
     day_df['time_diff'] = day_df['time_diff'].fillna(1/60)
     
-    # Detect modes based on power values
-    line_records = day_df[day_df[mode_col].str.contains("L", case=False, na=False)]
-    battery_records = day_df[day_df[mode_col].str.contains("B", case=False, na=False)]
+    # Define modes based on power values (mutually exclusive):
+    # - Grid: grid_power_input_active_total > 0
+    # - Solar: grid = 0 AND pv_input_power_1 > 0
+    # - Battery: grid = 0 AND pv_input_power_1 = 0
     
-    # Solar mode: when pv_input_power_1 > 0
-    solar_records = day_df[day_df['pv_input_power_1'] > 0]
+    grid_records = day_df[day_df['grid_power_input_active_total'] > 0]
+    solar_records = day_df[(day_df['grid_power_input_active_total'] == 0) & (day_df['pv_input_power_1'] > 0)]
+    battery_records = day_df[(day_df['grid_power_input_active_total'] == 0) & (day_df['pv_input_power_1'] == 0)]
     
-    line_time_hours = line_records['time_diff'].sum() if len(line_records) > 0 else 0
-    battery_time_hours = battery_records['time_diff'].sum() if len(battery_records) > 0 else 0
+    grid_time_hours = grid_records['time_diff'].sum() if len(grid_records) > 0 else 0
     solar_time_hours = solar_records['time_diff'].sum() if len(solar_records) > 0 else 0
+    battery_time_hours = battery_records['time_diff'].sum() if len(battery_records) > 0 else 0
     
     st.subheader("⚡ Inverter Operation Mode Time Calculation")
     
     mode_data = pd.DataFrame({
-        'Mode': ['☀️ Solar', '⚡ Grid (L)', '🔋 Battery (B)'],
-        'Hours': [solar_time_hours, line_time_hours, battery_time_hours],
-        'Records': [len(solar_records), len(line_records), len(battery_records)]
+        'Mode': ['☀️ Solar', '⚡ Grid', '🔋 Battery'],
+        'Hours': [solar_time_hours, grid_time_hours, battery_time_hours],
+        'Records': [len(solar_records), len(grid_records), len(battery_records)]
     })
     fig_mode = px.bar(mode_data, x='Mode', y='Hours', title="Total Time in Each Mode", color='Mode',
-                      color_discrete_map={'☀️ Solar': '#FFD700', '⚡ Grid (L)': '#1E90FF', '🔋 Battery (B)': '#00CC96'})
+                      color_discrete_map={'☀️ Solar': '#FFD700', '⚡ Grid': '#1E90FF', '🔋 Battery': '#00CC96'})
     fig_mode.update_layout(yaxis_title="Hours")
     st.plotly_chart(fig_mode, use_container_width=True)
     
     col1, col2, col3 = st.columns(3)
     col1.metric("☀️ Solar Time", f"{round(solar_time_hours, 2)} hours")
-    col2.metric("🔌 Grid (L) Time", f"{round(line_time_hours, 2)} hours")
-    col3.metric("🔋 Battery (B) Time", f"{round(battery_time_hours, 2)} hours")
+    col2.metric("⚡ Grid Time", f"{round(grid_time_hours, 2)} hours")
+    col3.metric("🔋 Battery Time", f"{round(battery_time_hours, 2)} hours")
 
     # Battery Status
     full_battery = day_df[(day_df[voltage_col] >= 28.5)]
