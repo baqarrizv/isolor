@@ -92,88 +92,87 @@ if df is not None:
     st.success("File Loaded Successfully ✅")
 
     # ===== DAILY ENERGY SUMMARY SECTION =====
-    st.header("📊 Daily Energy Summary")
-
-    # Option to choose calculation method: Fixed 5 min or Average based
-    calc_method = st.sidebar.radio(
-        "Calculation Method:",
-        ["Fixed 5 Minutes", "Average Based"],
-        index=0,
-        horizontal=True,
-        help="Fixed 5 Minutes: Uses 5 min per row. Average Based: Auto-detects time interval from data (default)."
-    )
-
-    # Energy calculation function
-    def calculate_daily_energy(df, datetime_col, calc_method):
-        df_calc = df.copy()
-        df_calc = df_calc.fillna(0)
-        
-        if calc_method == "Fixed 5 Minutes":
-            time_per_row_hours = 5 / 60  # 0.0833 hours
-            st.write(f"Debug: Each row = 5 minutes = {time_per_row_hours:.4f} hours")
-        else:
-            df_calc = df_calc.sort_values(datetime_col)
-            time_diffs = df_calc[datetime_col].diff().dropna()
-            
-            if len(time_diffs) > 0:
-                avg_minutes = time_diffs.mean().total_seconds() / 60
-                time_per_row_hours = avg_minutes / 60
-                st.write(f"Debug: Auto-detected average interval = {avg_minutes:.2f} minutes = {time_per_row_hours:.4f} hours")
-            else:
-                time_per_row_hours = 5 / 60
-                st.write(f"Debug: Could not detect, using fallback = 5 minutes = {time_per_row_hours:.4f} hours")
-        
-        # Energy (kWh) = Power (W) × time_per_row_hours / 1000
-        df_calc['solar_kwh'] = df_calc['pv_input_power_1'] * time_per_row_hours / 1000
-        df_calc['utility_kwh'] = df_calc['grid_power_input_active_total'] * time_per_row_hours / 1000
-        df_calc['load_kwh'] = df_calc['ac_output_active_power_total'] * time_per_row_hours / 1000
-        
-        # Battery energy calculation:
-        # When pv_input_power_1 = 0 AND grid_power_input_active_total = 0 AND ac_output_active_power_total > 0
-        # Then load is running from battery
-        df_calc['battery_kwh'] = 0.0
-        battery_condition = (
-            (df_calc['pv_input_power_1'] == 0) & 
-            (df_calc['grid_power_input_active_total'] == 0) & 
-            (df_calc['ac_output_active_power_total'] > 0)
+    with st.expander("📊 Daily Energy Summary", expanded=False):
+        # Option to choose calculation method: Fixed 5 min or Average based
+        calc_method = st.sidebar.radio(
+            "Calculation Method:",
+            ["Fixed 5 Minutes", "Average Based"],
+            index=0,
+            horizontal=True,
+            help="Fixed 5 Minutes: Uses 5 min per row. Average Based: Auto-detects time interval from data (default)."
         )
-        df_calc.loc[battery_condition, 'battery_kwh'] = df_calc.loc[battery_condition, 'ac_output_active_power_total'] * time_per_row_hours / 1000
-        
-        total_solar_power = df_calc['pv_input_power_1'].sum()
-        total_solar_kwh = df_calc['solar_kwh'].sum()
-        
-        st.write(f"Raw Solar Power Sum = {total_solar_power} W")
-        st.write(f"Solar kWh (using {calc_method}) = {total_solar_kwh:.2f} kWh")
-        st.write(f"Calculation: {total_solar_power} × {time_per_row_hours:.4f} / 1000 = {total_solar_kwh:.2f} kWh")
-        
-        # Group by date
-        daily = df_calc.groupby('date').agg({
-            'solar_kwh': 'sum',
-            'utility_kwh': 'sum', 
-            'load_kwh': 'sum',
-            'battery_kwh': 'sum'
-        }).reset_index()
-        
-        # Count records per day
-        record_counts = df_calc.groupby('date').size().reset_index(name='total_records')
-        daily = daily.merge(record_counts, on='date')
-        
-        return daily
 
-    # Calculate and display
-    daily_energy = calculate_daily_energy(df, datetime_col, calc_method)
-    
-    # Format the dataframe for better display
-    daily_display = daily_energy.copy()
-    daily_display['solar_kwh'] = daily_display['solar_kwh'].round(2)
-    daily_display['utility_kwh'] = daily_display['utility_kwh'].round(2)
-    daily_display['load_kwh'] = daily_display['load_kwh'].round(2)
-    daily_display['battery_kwh'] = daily_display['battery_kwh'].round(2)
-    
-    # Rename columns for better display
-    daily_display.columns = ['Date', 'Solar (kWh)', 'Grid (kWh)', 'Load (kWh)', 'Battery (kWh)', 'Records']
-    
-    st.dataframe(daily_display, use_container_width=True)
+        # Energy calculation function
+        def calculate_daily_energy(df, datetime_col, calc_method):
+            df_calc = df.copy()
+            df_calc = df_calc.fillna(0)
+            
+            if calc_method == "Fixed 5 Minutes":
+                time_per_row_hours = 5 / 60  # 0.0833 hours
+                st.write(f"Debug: Each row = 5 minutes = {time_per_row_hours:.4f} hours")
+            else:
+                df_calc = df_calc.sort_values(datetime_col)
+                time_diffs = df_calc[datetime_col].diff().dropna()
+                
+                if len(time_diffs) > 0:
+                    avg_minutes = time_diffs.mean().total_seconds() / 60
+                    time_per_row_hours = avg_minutes / 60
+                    st.write(f"Debug: Auto-detected average interval = {avg_minutes:.2f} minutes = {time_per_row_hours:.4f} hours")
+                else:
+                    time_per_row_hours = 5 / 60
+                    st.write(f"Debug: Could not detect, using fallback = 5 minutes = {time_per_row_hours:.4f} hours")
+            
+            # Energy (kWh) = Power (W) × time_per_row_hours / 1000
+            df_calc['solar_kwh'] = df_calc['pv_input_power_1'] * time_per_row_hours / 1000
+            df_calc['utility_kwh'] = df_calc['grid_power_input_active_total'] * time_per_row_hours / 1000
+            df_calc['load_kwh'] = df_calc['ac_output_active_power_total'] * time_per_row_hours / 1000
+            
+            # Battery energy calculation:
+            # When pv_input_power_1 = 0 AND grid_power_input_active_total = 0 AND ac_output_active_power_total > 0
+            # Then load is running from battery
+            df_calc['battery_kwh'] = 0.0
+            battery_condition = (
+                (df_calc['pv_input_power_1'] == 0) & 
+                (df_calc['grid_power_input_active_total'] == 0) & 
+                (df_calc['ac_output_active_power_total'] > 0)
+            )
+            df_calc.loc[battery_condition, 'battery_kwh'] = df_calc.loc[battery_condition, 'ac_output_active_power_total'] * time_per_row_hours / 1000
+            
+            total_solar_power = df_calc['pv_input_power_1'].sum()
+            total_solar_kwh = df_calc['solar_kwh'].sum()
+            
+            st.write(f"Raw Solar Power Sum = {total_solar_power} W")
+            st.write(f"Solar kWh (using {calc_method}) = {total_solar_kwh:.2f} kWh")
+            st.write(f"Calculation: {total_solar_power} × {time_per_row_hours:.4f} / 1000 = {total_solar_kwh:.2f} kWh")
+            
+            # Group by date
+            daily = df_calc.groupby('date').agg({
+                'solar_kwh': 'sum',
+                'utility_kwh': 'sum', 
+                'load_kwh': 'sum',
+                'battery_kwh': 'sum'
+            }).reset_index()
+            
+            # Count records per day
+            record_counts = df_calc.groupby('date').size().reset_index(name='total_records')
+            daily = daily.merge(record_counts, on='date')
+            
+            return daily
+
+        # Calculate and display
+        daily_energy = calculate_daily_energy(df, datetime_col, calc_method)
+        
+        # Format the dataframe for better display
+        daily_display = daily_energy.copy()
+        daily_display['solar_kwh'] = daily_display['solar_kwh'].round(2)
+        daily_display['utility_kwh'] = daily_display['utility_kwh'].round(2)
+        daily_display['load_kwh'] = daily_display['load_kwh'].round(2)
+        daily_display['battery_kwh'] = daily_display['battery_kwh'].round(2)
+        
+        # Rename columns for better display
+        daily_display.columns = ['Date', 'Solar (kWh)', 'Grid (kWh)', 'Load (kWh)', 'Battery (kWh)', 'Records']
+        
+        st.dataframe(daily_display, use_container_width=True)
     
     # Sidebar date filter - moved before breakdown
     date_options = sorted(df["date"].unique(), reverse=True)
@@ -183,43 +182,45 @@ if df is not None:
     
     selected_date = st.sidebar.selectbox("Select Date", date_options)
     
-    # Show detailed breakdown for the selected date
-    selected_day_data = daily_energy[daily_energy['date'] == selected_date]
-    if len(selected_day_data) > 0:
-        selected_day = selected_day_data.iloc[0]
-        st.subheader(f"📊 Breakdown: {selected_day['date']}")
-        col_a, col_b, col_c, col_d = st.columns(4)
-        col_a.metric("☀️ Solar se", f"{selected_day['solar_kwh']:.2f} units")
-        col_b.metric("⚡ Grid se", f"{selected_day['utility_kwh']:.2f} units")
-        col_c.metric("🏠 Total Load", f"{selected_day['load_kwh']:.2f} units")
-        col_d.metric("🔋 Battery se", f"{selected_day['battery_kwh']:.2f} units")
+    # Show detailed breakdown for the selected date (Collapsed by default)
+    with st.expander(f"📊 Breakdown: {selected_date}", expanded=False):
+        selected_day_data = daily_energy[daily_energy['date'] == selected_date]
+        if len(selected_day_data) > 0:
+            selected_day = selected_day_data.iloc[0]
+            col_a, col_b, col_c, col_d = st.columns(4)
+            col_a.metric("☀️ Solar se", f"{selected_day['solar_kwh']:.2f} units")
+            col_b.metric("⚡ Grid se", f"{selected_day['utility_kwh']:.2f} units")
+            col_d.metric("🔋 Battery se", f"{selected_day['battery_kwh']:.2f} units")
+            col_c.metric("🏠 Total Load", f"{selected_day['load_kwh']:.2f} units")
+            
 
-        # Calculate percentages - now including battery
-        source_df = pd.DataFrame({
-            'Source': ['☀️ Solar', '⚡ Grid', '🔋 Battery'],
-            'Energy (kWh)': [selected_day['solar_kwh'], selected_day['utility_kwh'], selected_day['battery_kwh']]
-        })
+            # Calculate percentages - now including battery
+            source_df = pd.DataFrame({
+                'Source': ['☀️ Solar', '⚡ Grid', '🔋 Battery'],
+                'Energy (kWh)': [selected_day['solar_kwh'], selected_day['utility_kwh'], selected_day['battery_kwh']]
+            })
 
-        fig_pie = px.pie(source_df, values='Energy (kWh)', names='Source',
-                       title="Energy Sources")
-        st.plotly_chart(fig_pie, use_container_width=True)
+            fig_pie = px.pie(source_df, values='Energy (kWh)', names='Source',
+                           title="Energy Sources")
+            st.plotly_chart(fig_pie, use_container_width=True)
 
-    # Bar chart - Solar vs Grid vs Load vs Battery
-    fig_energy = px.bar(
-        daily_energy, x='date', 
-        y=['solar_kwh', 'utility_kwh', 'load_kwh', 'battery_kwh'],
-        title="📊 Daily Energy: Solar vs Grid vs Load vs Battery (units)",
-        barmode='group',
-        labels={'date': 'Date', 'value': 'Units (kWh)', 'variable': 'Type'},
-        color_discrete_map={
-            'solar_kwh': '#FFD700',
-            'utility_kwh': '#1E90FF',
-            'load_kwh': '#FF6347',
-            'battery_kwh': '#00CC96'
-        }
-    )
-    fig_energy.update_layout(yaxis_title="Units (kWh)")
-    st.plotly_chart(fig_energy, use_container_width=True)
+    # Bar chart - Solar vs Grid vs Load vs Battery (Collapsed by default)
+    with st.expander("📊 Daily Energy Chart", expanded=False):
+        fig_energy = px.bar(
+            daily_energy, x='date', 
+            y=['solar_kwh', 'utility_kwh', 'load_kwh', 'battery_kwh'],
+            title="Daily Energy: Solar vs Grid vs Load vs Battery (units)",
+            barmode='group',
+            labels={'date': 'Date', 'value': 'Units (kWh)', 'variable': 'Type'},
+            color_discrete_map={
+                'solar_kwh': '#FFD700',
+                'utility_kwh': '#1E90FF',
+                'load_kwh': '#FF6347',
+                'battery_kwh': '#00CC96'
+            }
+        )
+        fig_energy.update_layout(yaxis_title="Units (kWh)")
+        st.plotly_chart(fig_energy, use_container_width=True)
     
     # Analysis for selected date
     day_df = df[df["date"] == selected_date]
@@ -549,55 +550,55 @@ if df is not None:
     solar_time_hours = solar_records['time_diff'].sum() if len(solar_records) > 0 else 0
     battery_time_hours = battery_records['time_diff'].sum() if len(battery_records) > 0 else 0
     
-    st.subheader("⚡ Inverter Operation Mode Time Calculation")
-    
-    mode_data = pd.DataFrame({
-        'Mode': ['☀️ Solar', '⚡ Grid', '🔋 Battery'],
-        'Hours': [solar_time_hours, grid_time_hours, battery_time_hours],
-        'Records': [len(solar_records), len(grid_records), len(battery_records)]
-    })
-    fig_mode = px.bar(mode_data, x='Mode', y='Hours', title="Total Time in Each Mode", color='Mode',
-                      color_discrete_map={'☀️ Solar': '#FFD700', '⚡ Grid': '#1E90FF', '🔋 Battery': '#00CC96'})
-    fig_mode.update_layout(yaxis_title="Hours")
-    st.plotly_chart(fig_mode, use_container_width=True)
-    
-    col1, col2, col3 = st.columns(3)
-    col1.metric("☀️ Solar Time", f"{round(solar_time_hours, 2)} hours")
-    col2.metric("⚡ Grid Time", f"{round(grid_time_hours, 2)} hours")
-    col3.metric("🔋 Battery Time", f"{round(battery_time_hours, 2)} hours")
+    # Solar Mode vs Grid Mode vs Battery Mode - Based on power values (Collapsed by default)
+    with st.expander("⚡ Inverter Operation Mode Time Calculation", expanded=False):
+        
+        mode_data = pd.DataFrame({
+            'Mode': ['☀️ Solar', '⚡ Grid', '🔋 Battery'],
+            'Hours': [solar_time_hours, grid_time_hours, battery_time_hours],
+            'Records': [len(solar_records), len(grid_records), len(battery_records)]
+        })
+        fig_mode = px.bar(mode_data, x='Mode', y='Hours', title="Total Time in Each Mode", color='Mode',
+                          color_discrete_map={'☀️ Solar': '#FFD700', '⚡ Grid': '#1E90FF', '🔋 Battery': '#00CC96'})
+        fig_mode.update_layout(yaxis_title="Hours")
+        st.plotly_chart(fig_mode, use_container_width=True)
+        
+        col1, col2, col3 = st.columns(3)
+        col1.metric("☀️ Solar Time", f"{round(solar_time_hours, 2)} hours")
+        col2.metric("⚡ Grid Time", f"{round(grid_time_hours, 2)} hours")
+        col3.metric("🔋 Battery Time", f"{round(battery_time_hours, 2)} hours")
 
     # Battery Status
-    full_battery = day_df[(day_df[voltage_col] >= 28.5)]
-    st.subheader("🔋 Battery Status")
-    col1, col2 = st.columns(2)
-    col1.metric("Full Battery (≈100%)", f"{len(full_battery)} records - (V) ≥ 28.5V")
-    
-    low_battery = day_df[(day_df[voltage_col] < 24.0)]
-    col2.metric("Low Battery (≈0-20%)", f"{len(low_battery)} records - (V) < 24V")
+    with st.expander("🔋 Battery Status", expanded=False):
+        full_battery = day_df[(day_df[voltage_col] >= 28.5)]
+        col1, col2 = st.columns(2)
+        col1.metric("Full Battery (≈100%)", f"{len(full_battery)} records - (V) ≥ 28.5V")
+        
+        low_battery = day_df[(day_df[voltage_col] < 24.0)]
+        col2.metric("Low Battery (≈0-20%)", f"{len(low_battery)} records - (V) < 24V")
 
     # Performance Score
-    line_mode_time = len(line_records)
-    battery_mode_time = len(battery_records)
-    
-    performance_score = (
-        (len(full_battery) / len(day_df)) * 40 + 
-        (line_mode_time / len(day_df)) * 30 + 
-        (1 - (battery_mode_time / len(day_df))) * 30
-    )
+    with st.expander("📊 Inverter Performance", expanded=False):
+        battery_mode_time = len(battery_records)
+        
+        performance_score = (
+            (len(full_battery) / len(day_df)) * 40 + 
+            (len(grid_records) / len(day_df)) * 30 + 
+            (1 - (battery_mode_time / len(day_df))) * 30
+        )
 
-    st.subheader("📊 Inverter Performance")
-    st.progress(int(performance_score))
-    st.write(f"**Score: {round(performance_score,2)} / 100**")
-    
-    if performance_score >= 70:
-        st.success("✅ Great performance! Inverter is working efficiently.")
-    elif performance_score >= 40:
-        st.warning("⚠️ Average performance. Check battery charging.")
-    else:
-        st.error("❌ Poor performance. Needs attention!")
+        st.progress(int(performance_score))
+        st.write(f"**Score: {round(performance_score,2)} / 100**")
+        
+        if performance_score >= 70:
+            st.success("✅ Great performance! Inverter is working efficiently.")
+        elif performance_score >= 40:
+            st.warning("⚠️ Average performance. Check battery charging.")
+        else:
+            st.error("❌ Poor performance. Needs attention!")
 
     # Raw Data
-    with st.expander("View Raw Data"):
+    with st.expander("View Raw Data", expanded=False):
         st.dataframe(day_df)
 
 else:
