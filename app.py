@@ -218,7 +218,7 @@ if df is not None:
     st.header(f"📅 Analysis for {selected_date}")
     
     # Option to view load as hourly average or row-wise
-    load_view_mode = st.radio("Load View Mode:", ["Hourly Average", "Row-wise (Every Entry)"], horizontal=True, index=0)
+    load_view_mode = st.radio("Load View Mode:", ["Hourly Average", "Row-wise (Every Entry)"], horizontal=True, index=1)
     
     # Sort data by datetime for row-wise view
     day_df_sorted_load = day_df.sort_values(datetime_col).reset_index(drop=True)
