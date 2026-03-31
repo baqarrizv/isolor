@@ -91,8 +91,14 @@ if df is not None:
 
     st.success("File Loaded Successfully ✅")
     
+    # ===== DATE FILTER (MUST BE BEFORE SIDEBAR) =====
+    date_options = sorted(df["date"].unique(), reverse=True)
+    if len(date_options) == 0:
+        st.error("⚠️ No valid dates found in the data.")
+        st.stop()
+    
     # ===== SIDEBAR =====
-    # Option to choose calculation method: Fixed 5 min or Average based
+    # First: Calculation Method
     calc_method = st.sidebar.radio(
         "Calculation Method:",
         ["Fixed 5 Minutes", "Average Based"],
@@ -100,6 +106,9 @@ if df is not None:
         horizontal=True,
         help="Fixed 5 Minutes: Uses 5 min per row. Average Based: Auto-detects time interval from data (default)."
     )
+    
+    # Second: Select Date
+    selected_date = st.sidebar.selectbox("Select Date", date_options)
     
     # Energy calculation function
     def calculate_daily_energy(df, datetime_col, calc_method):
@@ -171,13 +180,7 @@ if df is not None:
     # Rename columns for better display
     daily_display.columns = ['Date', 'Solar (kWh)', 'Grid (kWh)', 'Load (kWh)', 'Battery (kWh)', 'Records']
     
-    # ===== DATE FILTER =====
-    date_options = sorted(df["date"].unique(), reverse=True)
-    if len(date_options) == 0:
-        st.error("⚠️ No valid dates found in the data.")
-        st.stop()
-    
-    selected_date = st.sidebar.selectbox("Select Date", date_options)
+    # Note: selected_date is already set in sidebar above
     
     # ===== BREAKDOWN SECTION (DIRECT DISPLAY - BEFORE DAILY ENERGY CHART) =====
     st.subheader(f"📊 Breakdown: {selected_date}")
