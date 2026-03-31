@@ -190,8 +190,8 @@ if df is not None:
         col_a, col_b, col_c, col_d = st.columns(4)
         col_a.metric("☀️ Solar se", f"{selected_day['solar_kwh']:.2f} units")
         col_b.metric("⚡ Grid se", f"{selected_day['utility_kwh']:.2f} units")
-        col_d.metric("🔋 Battery se", f"{selected_day['battery_kwh']:.2f} units")
-        col_c.metric("🏠 Total Load", f"{selected_day['load_kwh']:.2f} units")
+        col_c.metric("🔋 Battery se", f"{selected_day['battery_kwh']:.2f} units")
+        col_d.metric("🏠 Total Load", f"{selected_day['load_kwh']:.2f} units")
         
         # Calculate percentages - now including battery
         source_df = pd.DataFrame({
