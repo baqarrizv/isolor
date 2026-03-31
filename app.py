@@ -128,6 +128,17 @@ if df is not None:
         df_calc['utility_kwh'] = df_calc['grid_power_input_active_total'] * time_per_row_hours / 1000
         df_calc['load_kwh'] = df_calc['ac_output_active_power_total'] * time_per_row_hours / 1000
         
+        # Battery energy calculation:
+        # When pv_input_power_1 = 0 AND grid_power_input_active_total = 0 AND ac_output_active_power_total > 0
+        # Then load is running from battery
+        df_calc['battery_kwh'] = 0.0
+        battery_condition = (
+            (df_calc['pv_input_power_1'] == 0) & 
+            (df_calc['grid_power_input_active_total'] == 0) & 
+            (df_calc['ac_output_active_power_total'] > 0)
+        )
+        df_calc.loc[battery_condition, 'battery_kwh'] = df_calc.loc[battery_condition, 'ac_output_active_power_total'] * time_per_row_hours / 1000
+        
         total_solar_power = df_calc['pv_input_power_1'].sum()
         total_solar_kwh = df_calc['solar_kwh'].sum()
         
@@ -139,7 +150,8 @@ if df is not None:
         daily = df_calc.groupby('date').agg({
             'solar_kwh': 'sum',
             'utility_kwh': 'sum', 
-            'load_kwh': 'sum'
+            'load_kwh': 'sum',
+            'battery_kwh': 'sum'
         }).reset_index()
         
         # Count records per day
@@ -156,9 +168,10 @@ if df is not None:
     daily_display['solar_kwh'] = daily_display['solar_kwh'].round(2)
     daily_display['utility_kwh'] = daily_display['utility_kwh'].round(2)
     daily_display['load_kwh'] = daily_display['load_kwh'].round(2)
+    daily_display['battery_kwh'] = daily_display['battery_kwh'].round(2)
     
     # Rename columns for better display
-    daily_display.columns = ['Date', 'Solar (kWh)', 'Grid (kWh)', 'Load (kWh)', 'Records']
+    daily_display.columns = ['Date', 'Solar (kWh)', 'Grid (kWh)', 'Load (kWh)', 'Battery (kWh)', 'Records']
     
     st.dataframe(daily_display, use_container_width=True)
     
@@ -175,34 +188,34 @@ if df is not None:
     if len(selected_day_data) > 0:
         selected_day = selected_day_data.iloc[0]
         st.subheader(f"📊 Breakdown: {selected_day['date']}")
-        col_a, col_b, col_c = st.columns(3)
+        col_a, col_b, col_c, col_d = st.columns(4)
         col_a.metric("☀️ Solar se", f"{selected_day['solar_kwh']:.2f} units")
         col_b.metric("⚡ Grid se", f"{selected_day['utility_kwh']:.2f} units")
         col_c.metric("🏠 Total Load", f"{selected_day['load_kwh']:.2f} units")
+        col_d.metric("🔋 Battery se", f"{selected_day['battery_kwh']:.2f} units")
 
-        # Calculate percentages
-        total_sources = selected_day['solar_kwh'] + selected_day['utility_kwh']
-        if total_sources > 0:
-            source_df = pd.DataFrame({
-                'Source': ['☀️ Solar', '⚡ Grid'],
-                'Energy (kWh)': [selected_day['solar_kwh'], selected_day['utility_kwh']]
-            })
+        # Calculate percentages - now including battery
+        source_df = pd.DataFrame({
+            'Source': ['☀️ Solar', '⚡ Grid', '🔋 Battery'],
+            'Energy (kWh)': [selected_day['solar_kwh'], selected_day['utility_kwh'], selected_day['battery_kwh']]
+        })
 
-            fig_pie = px.pie(source_df, values='Energy (kWh)', names='Source',
-                           title="Energy Sources")
-            st.plotly_chart(fig_pie, use_container_width=True)
+        fig_pie = px.pie(source_df, values='Energy (kWh)', names='Source',
+                       title="Energy Sources")
+        st.plotly_chart(fig_pie, use_container_width=True)
 
-    # Bar chart - Solar vs Grid vs Load
+    # Bar chart - Solar vs Grid vs Load vs Battery
     fig_energy = px.bar(
         daily_energy, x='date', 
-        y=['solar_kwh', 'utility_kwh', 'load_kwh'],
-        title="📊 Daily Energy: Solar vs Grid vs Load (units)",
+        y=['solar_kwh', 'utility_kwh', 'load_kwh', 'battery_kwh'],
+        title="📊 Daily Energy: Solar vs Grid vs Load vs Battery (units)",
         barmode='group',
         labels={'date': 'Date', 'value': 'Units (kWh)', 'variable': 'Type'},
         color_discrete_map={
             'solar_kwh': '#FFD700',
             'utility_kwh': '#1E90FF',
-            'load_kwh': '#FF6347'
+            'load_kwh': '#FF6347',
+            'battery_kwh': '#00CC96'
         }
     )
     fig_energy.update_layout(yaxis_title="Units (kWh)")
