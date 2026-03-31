@@ -215,17 +215,19 @@ if df is not None:
     dates = daily_energy_sorted['date'].values
     
     # Prepare customdata - each trace needs all 4 values for each date point
-    # Format: for each date, store (solar, grid, load, battery) tuple
     customdata_all = []
     for i in range(len(dates)):
         customdata_all.append([
             solar_vals[i], grid_vals[i], load_vals[i], battery_vals[i]
         ])
     
-    # Build custom hover showing ALL 4 values when hovering any bar for a date
-    # Format: "Date: YYYY-MM-DD\n☀️ Solar: X.XX kWh\n⚡ Grid: X.XX kWh\n🏠 Load: X.XX kWh\n🔋 Battery: X.XX kWh"
+    # Build custom hover template with variable showing which type is hovered
+    # The %{y} shows the value of the bar being hovered
+    # customdata shows all 4 values: [solar, grid, load, battery]
     custom_hover = (
         "<b>Date: %{x}</b><br>" +
+        "<b>%{y:.2f} kWh</b><br>" +
+        "------<br>" +
         "☀️ Solar: %{customdata[0]:.2f} kWh<br>" +
         "⚡ Grid: %{customdata[1]:.2f} kWh<br>" +
         "🏠 Load: %{customdata[2]:.2f} kWh<br>" +
@@ -247,14 +249,15 @@ if df is not None:
         }
     )
     
-    # Apply custom hover to all traces with proper customdata
+    # Apply custom hover to all traces
     fig_energy.update_traces(
         hovertemplate=custom_hover,
         customdata=customdata_all
     )
     fig_energy.update_layout(
         yaxis_title="Units (kWh)",
-        hovermode="x unified"
+        hovermode="closest",
+        hoverdistance=15
     )
     st.plotly_chart(fig_energy, use_container_width=True)
     
