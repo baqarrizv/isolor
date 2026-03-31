@@ -214,23 +214,30 @@ if df is not None:
     battery_vals = daily_energy_sorted['battery_kwh'].values
     dates = daily_energy_sorted['date'].values
     
+    # Calculate total for each date
+    total_vals = solar_vals + grid_vals + load_vals + battery_vals
+    
     # Prepare customdata - each trace needs all 4 values for each date point
+    # Format: [solar, grid, load, battery, total]
     customdata_all = []
     for i in range(len(dates)):
         customdata_all.append([
-            solar_vals[i], grid_vals[i], load_vals[i], battery_vals[i]
+            round(solar_vals[i], 2),
+            round(grid_vals[i], 2),
+            round(load_vals[i], 2),
+            round(battery_vals[i], 2),
+            round(total_vals[i], 2)
         ])
     
     # Map trace names to friendly names with color indicators
     trace_names = {
-        'solar_kwh': '☀️ Solar (Yellow)',
-        'utility_kwh': '⚡ Grid (Blue)',
-        'load_kwh': '🏠 Load (Red)',
-        'battery_kwh': '🔋 Battery (Green)'
+        'solar_kwh': '☀️ Solar',
+        'utility_kwh': '⚡ Grid',
+        'load_kwh': '🏠 Load',
+        'battery_kwh': '🔋 Battery'
     }
     
-    # Build custom hover template with bar name and value first, then all 4 values
-    # Using %{fullData.name} to get the trace name
+    # Build custom hover template with bar name and value first, then all 4 values + total
     custom_hover = (
         "<b>Date: %{x}</b><br>" +
         "<i>%{fullData.name}</i>: <b>%{y:.2f} kWh</b><br>" +
@@ -238,7 +245,8 @@ if df is not None:
         "☀️ Solar: %{customdata[0]:.2f} kWh<br>" +
         "⚡ Grid: %{customdata[1]:.2f} kWh<br>" +
         "🏠 Load: %{customdata[2]:.2f} kWh<br>" +
-        "🔋 Battery: %{customdata[3]:.2f} kWh<extra></extra>"
+        "🔋 Battery: %{customdata[3]:.2f} kWh<br>" +
+        "<b>Total: %{customdata[4]:.2f} kWh</b><extra></extra>"
     )
     
     # Create the bar chart
