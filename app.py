@@ -204,8 +204,40 @@ if df is not None:
         st.plotly_chart(fig_pie, use_container_width=True)
     
     # ===== DAILY ENERGY CHART (NO EXPANDER - DIRECT DISPLAY) =====
+    # Prepare data for custom hover - all 4 values for each date
+    daily_energy_sorted = daily_energy.sort_values('date').reset_index(drop=True)
+    
+    # Create mapping of column names to friendly labels
+    energy_labels = {
+        'solar_kwh': '☀️ Solar',
+        'utility_kwh': '⚡ Grid',
+        'load_kwh': '🏠 Load',
+        'battery_kwh': '🔋 Battery'
+    }
+    
+    # Build custom hover showing ALL values when hovering any bar
+    # Format: "Date: [date]\n☀️ Solar: value\n⚡ Grid: value\n🏠 Load: value\n🔋 Battery: value"
+    custom_hover_template = "%{x|%Y-%m-%d}<br>"
+    custom_hover_template += "☀️ Solar: %{customdata[0]:.2f} kWh<br>"
+    custom_hover_template += "⚡ Grid: %{customdata[1]:.2f} kWh<br>"
+    custom_hover_template += "🏠 Load: %{customdata[2]:.2f} kWh<br>"
+    custom_hover_template += "🔋 Battery: %{customdata[3]:.2f} kWh<extra></extra>"
+    
+    # Get all energy values for each date
+    solar_vals = daily_energy_sorted['solar_kwh'].values
+    grid_vals = daily_energy_sorted['utility_kwh'].values
+    load_vals = daily_energy_sorted['load_kwh'].values
+    battery_vals = daily_energy_sorted['battery_kwh'].values
+    dates = daily_energy_sorted['date'].values
+    
+    # Prepare customdata - all 4 values for each date
+    customdata = []
+    for i in range(len(daily_energy_sorted)):
+        customdata.append((solar_vals[i], grid_vals[i], load_vals[i], battery_vals[i]))
+    
+    # Create the bar chart
     fig_energy = px.bar(
-        daily_energy, x='date', 
+        daily_energy_sorted, x='date', 
         y=['solar_kwh', 'utility_kwh', 'load_kwh', 'battery_kwh'],
         title="Daily Energy: Solar vs Grid vs Load vs Battery (units)",
         barmode='group',
@@ -217,7 +249,10 @@ if df is not None:
             'battery_kwh': '#00CC96'
         }
     )
-    fig_energy.update_layout(yaxis_title="Units (kWh)")
+    
+    # Apply custom hover to all traces
+    fig_energy.update_traces(hovertemplate=custom_hover_template, customdata=customdata)
+    fig_energy.update_layout(yaxis_title="Units (kWh)", hovermode='x unified')
     st.plotly_chart(fig_energy, use_container_width=True)
     
     # ===== ANALYSIS FOR SELECTED DATE (START) =====
