@@ -171,6 +171,35 @@ if df is not None:
     # Rename columns for better display
     daily_display.columns = ['Date', 'Solar (kWh)', 'Grid (kWh)', 'Load (kWh)', 'Battery (kWh)', 'Records']
     
+    # ===== DATE FILTER =====
+    date_options = sorted(df["date"].unique(), reverse=True)
+    if len(date_options) == 0:
+        st.error("⚠️ No valid dates found in the data.")
+        st.stop()
+    
+    selected_date = st.sidebar.selectbox("Select Date", date_options)
+    
+    # ===== BREAKDOWN SECTION (DIRECT DISPLAY - BEFORE DAILY ENERGY CHART) =====
+    st.subheader(f"📊 Breakdown: {selected_date}")
+    selected_day_data = daily_energy[daily_energy['date'] == selected_date]
+    if len(selected_day_data) > 0:
+        selected_day = selected_day_data.iloc[0]
+        col_a, col_b, col_c, col_d = st.columns(4)
+        col_a.metric("☀️ Solar se", f"{selected_day['solar_kwh']:.2f} units")
+        col_b.metric("⚡ Grid se", f"{selected_day['utility_kwh']:.2f} units")
+        col_d.metric("🔋 Battery se", f"{selected_day['battery_kwh']:.2f} units")
+        col_c.metric("🏠 Total Load", f"{selected_day['load_kwh']:.2f} units")
+        
+        # Calculate percentages - now including battery
+        source_df = pd.DataFrame({
+            'Source': ['☀️ Solar', '⚡ Grid', '🔋 Battery'],
+            'Energy (kWh)': [selected_day['solar_kwh'], selected_day['utility_kwh'], selected_day['battery_kwh']]
+        })
+
+        fig_pie = px.pie(source_df, values='Energy (kWh)', names='Source',
+                       title="Energy Sources")
+        st.plotly_chart(fig_pie, use_container_width=True)
+    
     # ===== DAILY ENERGY CHART (NO EXPANDER - DIRECT DISPLAY) =====
     fig_energy = px.bar(
         daily_energy, x='date', 
@@ -187,14 +216,6 @@ if df is not None:
     )
     fig_energy.update_layout(yaxis_title="Units (kWh)")
     st.plotly_chart(fig_energy, use_container_width=True)
-    
-    # ===== DATE FILTER =====
-    date_options = sorted(df["date"].unique(), reverse=True)
-    if len(date_options) == 0:
-        st.error("⚠️ No valid dates found in the data.")
-        st.stop()
-    
-    selected_date = st.sidebar.selectbox("Select Date", date_options)
     
     # ===== ANALYSIS FOR SELECTED DATE (START) =====
     day_df = df[df["date"] == selected_date]
@@ -538,27 +559,6 @@ if df is not None:
     with st.expander("📊 Daily Energy Summary", expanded=False):
         st.dataframe(daily_display, use_container_width=True)
     
-    # ===== BREAKDOWN SECTION (DIRECT DISPLAY - NO EXPANDER) =====
-    st.subheader(f"📊 Breakdown: {selected_date}")
-    selected_day_data = daily_energy[daily_energy['date'] == selected_date]
-    if len(selected_day_data) > 0:
-        selected_day = selected_day_data.iloc[0]
-        col_a, col_b, col_c, col_d = st.columns(4)
-        col_a.metric("☀️ Solar se", f"{selected_day['solar_kwh']:.2f} units")
-        col_b.metric("⚡ Grid se", f"{selected_day['utility_kwh']:.2f} units")
-        col_d.metric("🔋 Battery se", f"{selected_day['battery_kwh']:.2f} units")
-        col_c.metric("🏠 Total Load", f"{selected_day['load_kwh']:.2f} units")
-        
-        # Calculate percentages - now including battery
-        source_df = pd.DataFrame({
-            'Source': ['☀️ Solar', '⚡ Grid', '🔋 Battery'],
-            'Energy (kWh)': [selected_day['solar_kwh'], selected_day['utility_kwh'], selected_day['battery_kwh']]
-        })
-
-        fig_pie = px.pie(source_df, values='Energy (kWh)', names='Source',
-                       title="Energy Sources")
-        st.plotly_chart(fig_pie, use_container_width=True)
-
     # ===== OTHER SECTIONS (AT END - COLLAPSED BY DEFAULT) =====
     # Battery Status
     with st.expander("🔋 Battery Status", expanded=False):
