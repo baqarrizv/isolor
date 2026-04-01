@@ -606,6 +606,7 @@ if df is not None:
             time_per_row_hours = 5 / 60
     
     # Define modes based on power values:
+    grid_records = day_df[day_df['grid_power_input_active_total'] > 0]
     solar_records = day_df[(day_df['grid_power_input_active_total'] == 0) & (day_df['pv_input_power_1'] > 0)]
     # Battery mode: grid=0 AND pv=0 AND load > 0 (system running on battery)
     battery_records = day_df[(day_df['grid_power_input_active_total'] == 0) & 
