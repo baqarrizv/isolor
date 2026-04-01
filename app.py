@@ -195,14 +195,14 @@ if df is not None:
         
         # Calculate percentages - now including battery
         source_df = pd.DataFrame({
-            'Source': ['Solar', 'Grid', 'Battery'],
+            'Source': ['☀️ Solar', '⚡ Grid', '🔋 Battery'],
             'Energy (kWh)': [selected_day['solar_kwh'], selected_day['utility_kwh'], selected_day['battery_kwh']]
         })
 
         fig_pie = px.pie(source_df, values='Energy (kWh)', names='Source',
                        title="Energy Sources",
                        color_discrete_sequence=['#FFD700', '#1E90FF', '#00CC96'],
-                       category_orders={'Source': ['Solar', 'Grid', 'Battery']})
+                       category_orders={'Source': ['☀️ Solar', '⚡ Grid', '🔋 Battery']})
         fig_pie.update_traces(textposition='inside', textinfo='percent+label')
         st.plotly_chart(fig_pie, use_container_width=True)
     
@@ -210,18 +210,18 @@ if df is not None:
     # Prepare data for custom hover - show all 4 values for the hovered date
     # Rename columns to friendly names for display
     daily_energy_display = daily_energy.rename(columns={
-        'solar_kwh': 'Solar',
-        'utility_kwh': 'Grid',
-        'load_kwh': 'Load',
-        'battery_kwh': 'Battery'
+        'solar_kwh': '☀️ Solar',
+        'utility_kwh': '⚡ Grid',
+        'load_kwh': '🏠 Load',
+        'battery_kwh': '🔋 Battery'
     })
     daily_energy_sorted = daily_energy_display.sort_values('date').reset_index(drop=True)
     
     # Get all energy values for each date using friendly column names
-    solar_vals = daily_energy_sorted['Solar'].values
-    grid_vals = daily_energy_sorted['Grid'].values
-    load_vals = daily_energy_sorted['Load'].values
-    battery_vals = daily_energy_sorted['Battery'].values
+    solar_vals = daily_energy_sorted['☀️ Solar'].values
+    grid_vals = daily_energy_sorted['⚡ Grid'].values
+    load_vals = daily_energy_sorted['🏠 Load'].values
+    battery_vals = daily_energy_sorted['🔋 Battery'].values
     dates = daily_energy_sorted['date'].values
     
     # Calculate total for each date
@@ -261,15 +261,15 @@ if df is not None:
     # Create the bar chart with friendly column names
     fig_energy = px.bar(
         daily_energy_sorted, x='date', 
-        y=['Solar', 'Grid', 'Load', 'Battery'],
+        y=['☀️ Solar', '⚡ Grid', '🏠 Load', '🔋 Battery'],
         title="Daily Energy: Solar vs Grid vs Load vs Battery (units)",
         barmode='group',
         labels={'date': 'Date', 'value': 'Units (kWh)', 'variable': 'Type'},
         color_discrete_map={
-            'Solar': '#FFD700',
-            'Grid': '#1E90FF',
-            'Load': '#FF6347',
-            'Battery': '#00CC96'
+            '☀️ Solar': '#FFD700',
+            '⚡ Grid': '#1E90FF',
+            '🏠 Load': '#FF6347',
+            '🔋 Battery': '#00CC96'
         }
     )
     
