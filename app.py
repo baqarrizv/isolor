@@ -193,10 +193,10 @@ if df is not None:
         col_c.metric("🔋 Battery", f"{selected_day['battery_kwh']:.2f} units")
         col_d.metric("🏠 Total Load", f"{selected_day['load_kwh']:.2f} units")
         
-        # Calculate percentages - now including battery
+        # Calculate percentages - now including battery (round to 2 decimals)
         source_df = pd.DataFrame({
             'Source': ['☀️ Solar', '⚡ Grid', '🔋 Battery'],
-            'Energy (kWh)': [selected_day['solar_kwh'], selected_day['utility_kwh'], selected_day['battery_kwh']]
+            'Energy (kWh)': [round(selected_day['solar_kwh'], 2), round(selected_day['utility_kwh'], 2), round(selected_day['battery_kwh'], 2)]
         })
 
         fig_pie = px.pie(source_df, values='Energy (kWh)', names='Source',
@@ -204,6 +204,15 @@ if df is not None:
                        color_discrete_sequence=['#FFD700', '#1E90FF', '#00CC96'],
                        category_orders={'Source': ['☀️ Solar', '⚡ Grid', '🔋 Battery']})
         fig_pie.update_traces(textposition='inside', textinfo='percent+label')
+        fig_pie.update_layout(hoverlabel=dict(
+            namelength=0,
+            font_size=14
+        ))
+        # Update hovertemplate to show formatted values
+        fig_pie.update_traces(
+            hovertemplate='<b>%{label}</b><br>%{percent}<br>%{value:.2f} kWh', 
+            texttemplate='<b>%{label}</b><br>%{value:.2f} kWh<br>%{percent}'
+        )
         st.plotly_chart(fig_pie, use_container_width=True)
     
     # ===== DAILY ENERGY CHART (NO EXPANDER - DIRECT DISPLAY) =====
