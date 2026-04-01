@@ -590,8 +590,20 @@ if df is not None:
     # Calculate mode times based on power values
     day_df[mode_col] = day_df[mode_col].astype(str)
     day_df = day_df.sort_values(datetime_col).reset_index(drop=True)
-    day_df['time_diff'] = day_df[datetime_col].diff().dt.total_seconds() / 3600
-    day_df['time_diff'] = day_df['time_diff'].fillna(1/60)
+    
+    # Get time interval using the same method as energy calculation
+    if calc_method == "Fixed 5 Minutes":
+        time_per_row_hours = 5 / 60  # 0.0833 hours
+    else:
+        # Auto-detect time interval from data
+        time_diffs = day_df[datetime_col].diff().dropna()
+        if len(time_diffs) > 0:
+            avg_minutes = time_diffs.mean().total_seconds() / 60
+            time_per_row_hours = avg_minutes / 60
+        else:
+            time_per_row_hours = 5 / 60
+    
+    st.sidebar.write(f"**Mode Calculation Debug:** Each row = {time_per_row_hours:.4f} hours")
     
     # Define modes based on power values (mutually exclusive):
     # - Grid: grid_power_input_active_total > 0
@@ -602,9 +614,19 @@ if df is not None:
     solar_records = day_df[(day_df['grid_power_input_active_total'] == 0) & (day_df['pv_input_power_1'] > 0)]
     battery_records = day_df[(day_df['grid_power_input_active_total'] == 0) & (day_df['pv_input_power_1'] == 0)]
     
-    grid_time_hours = grid_records['time_diff'].sum() if len(grid_records) > 0 else 0
-    solar_time_hours = solar_records['time_diff'].sum() if len(solar_records) > 0 else 0
-    battery_time_hours = battery_records['time_diff'].sum() if len(battery_records) > 0 else 0
+    # Calculate time for each mode = number of records × time per row
+    grid_time_hours = len(grid_records) * time_per_row_hours
+    solar_time_hours = len(solar_records) * time_per_row_hours
+    battery_time_hours = len(battery_records) * time_per_row_hours
+    
+    # Calculate total time and verify it adds up to 24 hours (or total hours in day)
+    total_mode_time = grid_time_hours + solar_time_hours + battery_time_hours
+    
+    st.sidebar.write(f"**Mode Time Calculation:**")
+    st.sidebar.write(f"Grid Records: {len(grid_records)} × {time_per_row_hours:.4f} = {grid_time_hours:.2f} hours")
+    st.sidebar.write(f"Solar Records: {len(solar_records)} × {time_per_row_hours:.4f} = {solar_time_hours:.2f} hours")
+    st.sidebar.write(f"Battery Records: {len(battery_records)} × {time_per_row_hours:.4f} = {battery_time_hours:.2f} hours")
+    st.sidebar.write(f"**Total Mode Time: {total_mode_time:.2f} hours**")
     
     mode_data = pd.DataFrame({
         'Mode': ['☀️ Solar', '⚡ Grid', '🔋 Battery'],
