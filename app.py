@@ -655,12 +655,13 @@ if df is not None:
     fig_mode = px.bar(mode_data, x='Mode', y='Hours', title="Total Time in Each Mode", color='Mode',
                       color_discrete_map={'☀️ Solar': '#FFD700', '⚡ Grid': '#1E90FF', '🔋 Battery': '#00CC96'})
     fig_mode.update_layout(yaxis_title="Hours")
-    fig_mode.update_traces(
-        hovertemplate='<b>%{x}</b><br>Time: %{customdata[0]}<br>Records: %{customdata[1]}',
-        customdata=mode_data[['Hours_Display', 'Records']].values.tolist(),
-        text=mode_data['Hours_Display'],
-        textposition='outside'
-    )
+    
+    # Set text for each bar individually
+    for i, trace in enumerate(fig_mode.data):
+        trace.text = [mode_data['Hours_Display'].iloc[i]]
+        trace.textposition = 'outside'
+        trace.hovertemplate = f'<b>{mode_data["Mode"].iloc[i]}</b><br>Time: {mode_data["Hours_Display"].iloc[i]}<br>Records: {mode_data["Records"].iloc[i]}'
+    
     st.plotly_chart(fig_mode, use_container_width=True)
     
     col1, col2, col3 = st.columns(3)
