@@ -188,9 +188,9 @@ if df is not None:
     if len(selected_day_data) > 0:
         selected_day = selected_day_data.iloc[0]
         col_a, col_b, col_c, col_d = st.columns(4)
-        col_a.metric("☀️ Solar se", f"{selected_day['solar_kwh']:.2f} units")
-        col_b.metric("⚡ Grid se", f"{selected_day['utility_kwh']:.2f} units")
-        col_c.metric("🔋 Battery se", f"{selected_day['battery_kwh']:.2f} units")
+        col_a.metric("☀️ Solar", f"{selected_day['solar_kwh']:.2f} units")
+        col_b.metric("⚡ Grid", f"{selected_day['utility_kwh']:.2f} units")
+        col_c.metric("🔋 Battery", f"{selected_day['battery_kwh']:.2f} units")
         col_d.metric("🏠 Total Load", f"{selected_day['load_kwh']:.2f} units")
         
         # Calculate percentages - now including battery
@@ -251,8 +251,8 @@ if df is not None:
         "------<br>" +
         "Solar: <b>%{customdata[0]:.2f} kWh</b><br>" +
         "Grid: <b>%{customdata[1]:.2f} kWh</b><br>" +
-        "Load: <b>%{customdata[2]:.2f} kWh</b><br>" +
-        "Battery: <b>%{customdata[3]:.2f} kWh</b><br>"
+        "Battery: <b>%{customdata[3]:.2f} kWh</b><br>" +
+        "Load: <b>%{customdata[2]:.2f} kWh</b><br>"
     )
     
     # Create the bar chart with friendly column names
