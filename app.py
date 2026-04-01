@@ -201,12 +201,7 @@ if df is not None:
 
         fig_pie = px.pie(source_df, values='Energy (kWh)', names='Source',
                        title="Energy Sources",
-                       color='Source',
-                       color_map={
-                           'Solar': '#FFD700',
-                           'Grid': '#1E90FF',
-                           'Battery': '#00CC96'
-                       })
+                       color_discrete_sequence=['#FFD700', '#1E90FF', '#00CC96'])
         st.plotly_chart(fig_pie, use_container_width=True)
     
     # ===== DAILY ENERGY CHART (NO EXPANDER - DIRECT DISPLAY) =====
