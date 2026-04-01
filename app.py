@@ -249,11 +249,10 @@ if df is not None:
         "<b>Date: %{x}</b><br>" +
         "<i>%{fullData.name}</i>: <b>%{y:.2f} kWh</b><br>" +
         "------<br>" +
-        "Solar: %{customdata[0]:.2f} kWh<br>" +
-        "Grid: %{customdata[1]:.2f} kWh<br>" +
-        "Load: %{customdata[2]:.2f} kWh<br>" +
-        "Battery: %{customdata[3]:.2f} kWh<br>" +
-        "<b>Total: %{customdata[4]:.2f} kWh</b><extra></extra>"
+        "Solar: <b>%{customdata[0]:.2f} kWh</b><br>" +
+        "Grid: <b>%{customdata[1]:.2f} kWh</b><br>" +
+        "Load: <b>%{customdata[2]:.2f} kWh</b><br>" +
+        "Battery: <b>%{customdata[3]:.2f} kWh</b><br>"
     )
     
     # Create the bar chart with friendly column names
