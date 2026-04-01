@@ -201,7 +201,8 @@ if df is not None:
 
         fig_pie = px.pie(source_df, values='Energy (kWh)', names='Source',
                        title="Energy Sources",
-                       color_discrete_map={
+                       color='Source',
+                       color_map={
                            'Solar': '#FFD700',
                            'Grid': '#1E90FF',
                            'Battery': '#00CC96'
