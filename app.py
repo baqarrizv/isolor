@@ -595,18 +595,21 @@ if df is not None:
     # For "Fixed 5 Minutes" use 5 min, for "Average Based" calculate from full data
     if calc_method == "Fixed 5 Minutes":
         time_per_row_hours = 5 / 60  # 0.0833 hours
+        time_per_row_mins = 5
     else:
-        # Auto-detect from full df to match energy calculation
+        # Auto-detect from FULL df to match energy calculation
         full_df_sorted = df.sort_values(datetime_col)
         time_diffs = full_df_sorted[datetime_col].diff().dropna()
         if len(time_diffs) > 0:
             avg_minutes = time_diffs.mean().total_seconds() / 60
             time_per_row_hours = avg_minutes / 60
+            time_per_row_mins = avg_minutes
             st.sidebar.write(f"**Auto-detected interval:** {avg_minutes:.2f} min per row")
         else:
             time_per_row_hours = 5 / 60
+            time_per_row_mins = 5
     
-    st.sidebar.write(f"**Mode Time: Each row = {time_per_row_hours:.4f} hours**")
+    st.sidebar.write(f"**Mode Time: Each row = {time_per_row_mins:.2f} minutes**")
     
     # Define modes based on power values (MUST cover ALL records):
     # - Grid: grid_power_input_active_total > 0
@@ -637,12 +640,12 @@ if df is not None:
     actual_mode_total = grid_time_hours + solar_time_hours + battery_time_hours + idle_time_hours
     
     st.sidebar.write(f"**Records in day:** {total_records}")
-    st.sidebar.write(f"**Expected hours:** {expected_hours:.2f} hours (if all records accounted)")
-    st.sidebar.write(f"**Grid:** {len(grid_records)} records → {grid_time_hours:.2f} hours")
-    st.sidebar.write(f"**Solar:** {len(solar_records)} records → {solar_time_hours:.2f} hours")
-    st.sidebar.write(f"**Battery:** {len(battery_records)} records → {battery_time_hours:.2f} hours")
-    st.sidebar.write(f"**Idle:** {len(idle_records)} records → {idle_time_hours:.2f} hours")
-    st.sidebar.write(f"**Mode Total:** {actual_mode_total:.2f} hours")
+    st.sidebar.write(f"**Expected time:** {int(expected_hours)}h {int((expected_hours % 1) * 60)}min")
+    st.sidebar.write(f"**Grid:** {len(grid_records)} records → {int(grid_time_hours)}h {int((grid_time_hours % 1) * 60)}min")
+    st.sidebar.write(f"**Solar:** {len(solar_records)} records → {int(solar_time_hours)}h {int((solar_time_hours % 1) * 60)}min")
+    st.sidebar.write(f"**Battery:** {len(battery_records)} records → {int(battery_time_hours)}h {int((battery_time_hours % 1) * 60)}min")
+    st.sidebar.write(f"**Idle:** {len(idle_records)} records → {int(idle_time_hours)}h {int((idle_time_hours % 1) * 60)}min")
+    st.sidebar.write(f"**Mode Total:** {int(actual_mode_total)}h {int((actual_mode_total % 1) * 60)}min")
     
     mode_data = pd.DataFrame({
         'Mode': ['☀️ Solar', '⚡ Grid', '🔋 Battery', '⏸️ Idle'],
@@ -655,10 +658,11 @@ if df is not None:
     st.plotly_chart(fig_mode, use_container_width=True)
     
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("☀️ Solar Time", f"{round(solar_time_hours, 2)} hours")
-    col2.metric("⚡ Grid Time", f"{round(grid_time_hours, 2)} hours")
-    col3.metric("🔋 Battery Time", f"{round(battery_time_hours, 2)} hours")
-    col4.metric("⏸️ Idle Time", f"{round(idle_time_hours, 2)} hours")
+    # Format as H:MM for better readability
+    col1.metric("☀️ Solar Time", f"{int(solar_time_hours)}h {int((solar_time_hours % 1) * 60)}m")
+    col2.metric("⚡ Grid Time", f"{int(grid_time_hours)}h {int((grid_time_hours % 1) * 60)}m")
+    col3.metric("🔋 Battery Time", f"{int(battery_time_hours)}h {int((battery_time_hours % 1) * 60)}m")
+    col4.metric("⏸️ Idle Time", f"{int(idle_time_hours)}h {int((idle_time_hours % 1) * 60)}m")
 
     # ===== DAILY ENERGY SUMMARY (AT END - COLLAPSED BY DEFAULT) =====
     with st.expander("📊 Daily Energy Summary", expanded=False):
