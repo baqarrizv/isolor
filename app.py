@@ -195,16 +195,16 @@ if df is not None:
         
         # Calculate percentages - now including battery
         source_df = pd.DataFrame({
-            'Source': ['☀️ Solar', '⚡ Grid', '🔋 Battery'],
+            'Source': ['Solar', 'Grid', 'Battery'],
             'Energy (kWh)': [selected_day['solar_kwh'], selected_day['utility_kwh'], selected_day['battery_kwh']]
         })
 
         fig_pie = px.pie(source_df, values='Energy (kWh)', names='Source',
                        title="Energy Sources",
                        color_discrete_map={
-                           '☀️ Solar': '#FFD700',
-                           '⚡ Grid': '#1E90FF',
-                           '🔋 Battery': '#00CC96'
+                           'Solar': '#FFD700',
+                           'Grid': '#1E90FF',
+                           'Battery': '#00CC96'
                        })
         st.plotly_chart(fig_pie, use_container_width=True)
     
