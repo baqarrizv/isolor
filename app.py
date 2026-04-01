@@ -630,10 +630,10 @@ if df is not None:
                              (day_df['pv_input_power_1'] == 0) & 
                              (day_df['ac_output_active_power_total'] > 0)]
     
-    # Calculate time for each mode as percentage of actual time span, then convert to hours
-    grid_time_hours = (len(grid_records) / len(day_df)) * actual_time_span_hours if len(day_df) > 0 else 0
-    solar_time_hours = (len(solar_records) / len(day_df)) * actual_time_span_hours if len(day_df) > 0 else 0
-    battery_time_hours = (len(battery_records) / len(day_df)) * actual_time_span_hours if len(day_df) > 0 else 0
+    # Calculate time for each mode using time interval per row (more accurate)
+    grid_time_hours = len(grid_records) * time_per_row_hours
+    solar_time_hours = len(solar_records) * time_per_row_hours
+    battery_time_hours = len(battery_records) * time_per_row_hours
     
     # Total records in selected day
     total_records = len(day_df)
@@ -649,13 +649,11 @@ if df is not None:
     mode_data = pd.DataFrame({
         'Mode': ['☀️ Solar', '⚡ Grid', '🔋 Battery'],
         'Hours': [round(solar_time_hours, 2), round(grid_time_hours, 2), round(battery_time_hours, 2)],
-        'Hours_Display': [f"{int(solar_time_hours)}h {int((solar_time_hours % 1) * 60)}m", f"{int(grid_time_hours)}h {int((grid_time_hours % 1) * 60)}m", f"{int(battery_time_hours)}h {int((battery_time_hours % 1) * 60)}m"],
         'Records': [len(solar_records), len(grid_records), len(battery_records)]
     })
     fig_mode = px.bar(mode_data, x='Mode', y='Hours', title="Total Time in Each Mode", color='Mode',
                       color_discrete_map={'☀️ Solar': '#FFD700', '⚡ Grid': '#1E90FF', '🔋 Battery': '#00CC96'})
-    fig_mode.update_layout(yaxis_title="Hours", yaxis_tickformat='H:MM')
-    fig_mode.update_traces(hovertemplate='<b>%{x}</b><br>Time: %{customdata[0]}<br>Records: %{customdata[1]}', customdata=mode_data[['Hours_Display', 'Records']].values.tolist())
+    fig_mode.update_layout(yaxis_title="Hours")
     st.plotly_chart(fig_mode, use_container_width=True)
     
     col1, col2, col3 = st.columns(3)
