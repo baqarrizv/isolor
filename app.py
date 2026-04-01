@@ -6,9 +6,95 @@ import requests
 import os
 from io import BytesIO
 
-st.set_page_config(page_title="Inverter Analytics Dashboard", layout="wide")
+# Mobile-friendly page config
+st.set_page_config(
+    page_title="Inverter Analytics",
+    page_icon="🔋",
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
 
-st.title("🔋 Inverter Analytics Dashboard")
+# Custom CSS for mobile responsiveness
+st.markdown(""""
+<style>
+    /* Mobile-first responsive styles */
+    @media (max-width: 768px) {
+        .stApp {
+            padding: 0.5rem;
+        }
+        .stTitle {
+            font-size: 1.5rem !important;
+        }
+        .stHeader {
+            font-size: 1.2rem !important;
+        }
+        div[data-testid="stMetric"] {
+            padding: 0.5rem !important;
+        }
+        div[data-testid="stMetricLabel"] {
+            font-size: 0.8rem !important;
+        }
+        div[data-testid="stMetricValue"] {
+            font-size: 1rem !important;
+        }
+    }
+    
+    /* Make charts full width on mobile */
+    div[data-testid="stPlotlyChart"] {
+        width: 100%;
+    }
+    
+    /* Better spacing for mobile */
+    .block-container {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+    }
+    
+    /* Sidebar styling */
+    section[data-testid="stSidebar"] {
+        width: 100% !important;
+    }
+    
+    /* Radio button horizontal on mobile */
+    div[data-testid="stRadio"] > div {
+        flex-direction: column;
+    }
+    
+    /* Stack columns on small screens */
+    div[data-testid="column"] {
+        width: 100% !important;
+        margin-bottom: 0.5rem;
+    }
+</style>
+
+<script>
+// Additional mobile responsive adjustments
+function adjustForMobile() {
+    const isMobile = window.innerWidth <= 768;
+    
+    // Stack all column groups vertically on mobile
+    if (isMobile) {
+        const columns = document.querySelectorAll('[data-testid="stHorizontalBlock"]');
+        columns.forEach(col => {
+            col.style.flexDirection = 'column';
+            col.style.gap = '0.5rem';
+        });
+        
+        // Make charts taller on mobile for better visibility
+        const charts = document.querySelectorAll('[data-testid="stPlotlyChart"]');
+        charts.forEach(chart => {
+            chart.style.minHeight = '300px';
+        });
+    }
+}
+
+// Run on load and resize
+window.addEventListener('load', adjustForMobile);
+window.addEventListener('resize', adjustForMobile);
+</script>
+""", unsafe_allow_html=True)
+
+st.title("🔋 Inverter Analytics")
 st.markdown("Upload your inverter Excel file or use a Google Sheet link and get detailed hourly & daily insights.")
 
 # Option to choose data source - Default is Google Sheet
@@ -213,7 +299,12 @@ if df is not None:
             hovertemplate='<b>%{label}</b><br>%{percent}<br>%{value:.2f} kWh', 
             texttemplate='<b>%{label}</b><br>%{value:.2f} kWh<br>%{percent}'
         )
-        st.plotly_chart(fig_pie, use_container_width=True)
+        # Make chart responsive for mobile
+        st.plotly_chart(fig_pie, use_container_width=True, config={
+            'responsive': True,
+            'displayModeBar': True,
+            'modeBarButtonsToRemove': ['lasso2d', 'select2d']
+        })
     
     # ===== DAILY ENERGY CHART (NO EXPANDER - DIRECT DISPLAY) =====
     # Prepare data for custom hover - show all 4 values for the hovered date
@@ -292,7 +383,12 @@ if df is not None:
         hovermode="closest",
         hoverdistance=15
     )
-    st.plotly_chart(fig_energy, use_container_width=True)
+    # Make chart responsive for mobile
+    st.plotly_chart(fig_energy, use_container_width=True, config={
+        'responsive': True,
+        'displayModeBar': True,
+        'modeBarButtonsToRemove': ['lasso2d', 'select2d']
+    })
     
     # ===== ANALYSIS FOR SELECTED DATE (START) =====
     day_df = df[df["date"] == selected_date]
@@ -389,7 +485,12 @@ if df is not None:
         fig_load.update_traces(hovertemplate=load_hover, customdata=load_customdata)
         fig_load.update_layout(hovermode='closest', hoverdistance=-1)
     
-    st.plotly_chart(fig_load, use_container_width=True)
+    # Make chart responsive for mobile
+    st.plotly_chart(fig_load, use_container_width=True, config={
+        'responsive': True,
+        'displayModeBar': True,
+        'modeBarButtonsToRemove': ['lasso2d', 'select2d']
+    })
     
     # Find numeric columns - needed for both voltage and power charts
     numeric_cols = day_df.select_dtypes(include=[np.number]).columns.tolist()
@@ -495,7 +596,12 @@ if df is not None:
     fig_voltage.update_traces(hovertemplate=voltage_hover, customdata=voltage_customdata)
     fig_voltage.update_layout(hovermode='closest', hoverdistance=-1)
     
-    st.plotly_chart(fig_voltage, use_container_width=True)
+    # Make chart responsive for mobile
+    st.plotly_chart(fig_voltage, use_container_width=True, config={
+        'responsive': True,
+        'displayModeBar': True,
+        'modeBarButtonsToRemove': ['lasso2d', 'select2d']
+    })
     
     # Battery Voltage Graph (DIRECT DISPLAY - NO EXPANDER)
     battery_col = None
@@ -543,7 +649,12 @@ if df is not None:
         fig_battery.update_traces(hovertemplate=battery_hover, customdata=battery_customdata)
         fig_battery.update_layout(hovermode='closest', hoverdistance=-1)
         
-        st.plotly_chart(fig_battery, use_container_width=True)
+        # Make chart responsive for mobile
+        st.plotly_chart(fig_battery, use_container_width=True, config={
+            'responsive': True,
+            'displayModeBar': True,
+            'modeBarButtonsToRemove': ['lasso2d', 'select2d']
+        })
     else:
         st.warning("Battery Voltage column not found")
 
@@ -595,7 +706,12 @@ if df is not None:
     fig_main.update_traces(hovertemplate=ac_hover, customdata=ac_customdata)
     fig_main.update_layout(hovermode='closest', hoverdistance=-1)
     
-    st.plotly_chart(fig_main, use_container_width=True)
+    # Make chart responsive for mobile
+    st.plotly_chart(fig_main, use_container_width=True, config={
+        'responsive': True,
+        'displayModeBar': True,
+        'modeBarButtonsToRemove': ['lasso2d', 'select2d']
+    })
 
     # Solar Mode vs Grid Mode vs Battery Mode - Based on power values (DIRECT DISPLAY - NO EXPANDER)
     # Calculate mode times based on power values
@@ -662,7 +778,12 @@ if df is not None:
         trace.textposition = 'outside'
         trace.hovertemplate = f'<b>{mode_data["Mode"].iloc[i]}</b><br>Time: {mode_data["Hours_Display"].iloc[i]}<br>Records: {mode_data["Records"].iloc[i]}'
     
-    st.plotly_chart(fig_mode, use_container_width=True)
+    # Make chart responsive for mobile
+    st.plotly_chart(fig_mode, use_container_width=True, config={
+        'responsive': True,
+        'displayModeBar': True,
+        'modeBarButtonsToRemove': ['lasso2d', 'select2d']
+    })
     
     col1, col2, col3 = st.columns(3)
     col1.metric("☀️ Solar Time", f"{int(solar_time_hours)}h {int((solar_time_hours % 1) * 60)}m")
