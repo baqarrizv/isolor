@@ -14,7 +14,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS for mobile responsiveness
+## Custom CSS for mobile responsiveness
 st.markdown(""""
 <style>
     /* Mobile-first responsive styles */
