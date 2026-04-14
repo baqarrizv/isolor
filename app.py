@@ -340,9 +340,8 @@ if df is not None:
     battery_vals = daily_energy_sorted['🔋 Battery'].values
     dates = daily_energy_sorted['date'].values
     
-    # Calculate total for each date (excluding battery from total since it's already included in load)
-    # battery_kwh is calculated separately only for display purposes, but it's already part of load_kwh
-    total_vals = solar_vals + grid_vals + load_vals
+    # Calculate total for each date (Solar + Grid + Battery = all sources)
+    total_vals = solar_vals + grid_vals + battery_vals
     
     # Prepare customdata - each trace needs all 4 values for each date point
     # Format: [solar, grid, load, battery, total]
