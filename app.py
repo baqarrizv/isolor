@@ -273,16 +273,27 @@ if df is not None:
     selected_day_data = daily_energy[daily_energy['date'] == selected_date]
     if len(selected_day_data) > 0:
         selected_day = selected_day_data.iloc[0]
+        
+        # Calculate total load: solar + grid + battery (battery is already included in load_kwh)
+        # We need to show: Total Load = Load running from Grid + Load running from Battery
+        # But load_kwh includes battery portion, so we need to show breakdown properly
+        
+        # Total main = Grid + Solar (power sources)
+        # Backup = Battery portion (from load_kwh)
+        total_main = selected_day['solar_kwh'] + selected_day['utility_kwh']
+        backup_kwh = selected_day['battery_kwh']
+        total_load_display = selected_day['load_kwh']
+        
         col_a, col_b, col_c, col_d = st.columns(4)
         col_a.metric("☀️ Solar", f"{selected_day['solar_kwh']:.2f} units")
         col_b.metric("⚡ Grid", f"{selected_day['utility_kwh']:.2f} units")
-        col_c.metric("🔋 Battery", f"{selected_day['battery_kwh']:.2f} units")
-        col_d.metric("🏠 Total Load", f"{selected_day['load_kwh']:.2f} units")
+        col_c.metric("🔋 Battery (Backup)", f"{backup_kwh:.2f} units")
+        col_d.metric("🏠 Total Load", f"{total_load_display:.2f} units")
         
         # Calculate percentages - now including battery (round to 2 decimals)
         source_df = pd.DataFrame({
             'Source': ['☀️ Solar', '⚡ Grid', '🔋 Battery'],
-            'Energy (kWh)': [round(selected_day['solar_kwh'], 2), round(selected_day['utility_kwh'], 2), round(selected_day['battery_kwh'], 2)]
+            'Energy (kWh)': [round(selected_day['solar_kwh'], 2), round(selected_day['utility_kwh'], 2), round(backup_kwh, 2)]
         })
 
         fig_pie = px.pie(source_df, values='Energy (kWh)', names='Source',
@@ -324,8 +335,9 @@ if df is not None:
     battery_vals = daily_energy_sorted['🔋 Battery'].values
     dates = daily_energy_sorted['date'].values
     
-    # Calculate total for each date
-    total_vals = solar_vals + grid_vals + load_vals + battery_vals
+    # Calculate total for each date (excluding battery from total since it's already included in load)
+    # battery_kwh is calculated separately only for display purposes, but it's already part of load_kwh
+    total_vals = solar_vals + grid_vals + load_vals
     
     # Prepare customdata - each trace needs all 4 values for each date point
     # Format: [solar, grid, load, battery, total]
