@@ -278,22 +278,27 @@ if df is not None:
         # We need to show: Total Load = Load running from Grid + Load running from Battery
         # But load_kwh includes battery portion, so we need to show breakdown properly
         
-        # Total main = Grid + Solar (power sources)
-        # Backup = Battery portion (from load_kwh)
-        total_main = selected_day['solar_kwh'] + selected_day['utility_kwh']
-        backup_kwh = selected_day['battery_kwh']
-        total_load_display = selected_day['load_kwh']
+        # Total main = Grid portion of load only (Grid consumed directly by load)
+        # Backup = Battery portion (from load_kwh when running on battery)
+        # Total = Main + Backup
         
-        col_a, col_b, col_c, col_d = st.columns(4)
+        # Grid portion of load = total load - battery portion
+        grid_portion_load = selected_day['load_kwh'] - selected_day['battery_kwh']
+        
+        col_a, col_b, col_c, col_d, col_e = st.columns(5)
         col_a.metric("☀️ Solar", f"{selected_day['solar_kwh']:.2f} units")
         col_b.metric("⚡ Grid", f"{selected_day['utility_kwh']:.2f} units")
-        col_c.metric("🔋 Battery (Backup)", f"{backup_kwh:.2f} units")
-        col_d.metric("🏠 Total Load", f"{total_load_display:.2f} units")
+        col_c.metric("🔋 Battery (Backup)", f"{selected_day['battery_kwh']:.2f} units")
+        col_d.metric("🏠 Total Load", f"{selected_day['load_kwh']:.2f} units")
+        
+        # Total = Solar + Grid (main sources only, battery is backup)
+        total_all = selected_day['solar_kwh'] + selected_day['utility_kwh']
+        col_e.metric("⚡ Total (Main)", f"{total_all:.2f} units")
         
         # Calculate percentages - now including battery (round to 2 decimals)
         source_df = pd.DataFrame({
             'Source': ['☀️ Solar', '⚡ Grid', '🔋 Battery'],
-            'Energy (kWh)': [round(selected_day['solar_kwh'], 2), round(selected_day['utility_kwh'], 2), round(backup_kwh, 2)]
+            'Energy (kWh)': [round(selected_day['solar_kwh'], 2), round(selected_day['utility_kwh'], 2), round(selected_day['battery_kwh'], 2)]
         })
 
         fig_pie = px.pie(source_df, values='Energy (kWh)', names='Source',
