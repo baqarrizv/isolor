@@ -288,11 +288,11 @@ if df is not None:
         col_a, col_b, col_c, col_d, col_e = st.columns(5)
         col_a.metric("☀️ Solar", f"{selected_day['solar_kwh']:.2f} units")
         col_b.metric("⚡ Grid", f"{selected_day['utility_kwh']:.2f} units")
-        col_c.metric("🔋 Battery (Backup)", f"{selected_day['battery_kwh']:.2f} units")
+        col_c.metric("🔋 Battery", f"{selected_day['battery_kwh']:.2f} units")
         col_d.metric("🏠 Total Load", f"{selected_day['load_kwh']:.2f} units")
         
-        # Total = Solar + Grid (main sources only, battery is backup)
-        total_all = selected_day['solar_kwh'] + selected_day['utility_kwh']
+        # Total = Solar + Grid + Battery (all power sources combined)
+        total_all = selected_day['solar_kwh'] + selected_day['utility_kwh'] + selected_day['battery_kwh']
         col_e.metric("⚡ Total (Main)", f"{total_all:.2f} units")
         
         # Calculate percentages - now including battery (round to 2 decimals)
