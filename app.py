@@ -270,7 +270,7 @@ if df is not None:
     # Note: selected_date is already set in sidebar above
     
     # ===== BREAKDOWN SECTION (DIRECT DISPLAY - BEFORE DAILY ENERGY CHART) =====
-    st.subheader(f"📊 Breakdown: {selected_date}")
+    st.subheader(f"📊 Breakdown in Units: {selected_date}")
     selected_day_data = daily_energy[daily_energy['date'] == selected_date]
     if len(selected_day_data) > 0:
         selected_day = selected_day_data.iloc[0]
@@ -287,14 +287,14 @@ if df is not None:
         grid_portion_load = selected_day['load_kwh'] - selected_day['battery_kwh']
         
         col_a, col_b, col_c, col_d, col_e = st.columns(5)
-        col_a.metric("☀️ Solar", f"{selected_day['solar_kwh']:.2f} units")
-        col_b.metric("⚡ Grid", f"{selected_day['utility_kwh']:.2f} units")
-        col_c.metric("🔋 Battery", f"{selected_day['battery_kwh']:.2f} units")
-        col_d.metric("🏠 Total Load", f"{selected_day['load_kwh']:.2f} units")
+        col_a.metric("☀️ Solar", f"{selected_day['solar_kwh']:.2f}")
+        col_b.metric("⚡ Grid", f"{selected_day['utility_kwh']:.2f}")
+        col_c.metric("🔋 Battery", f"{selected_day['battery_kwh']:.2f}")
+        col_d.metric("🏠 Total Load", f"{selected_day['load_kwh']:.2f}")
         
         # Total = Solar + Grid + Battery (all power sources combined)
         total_all = selected_day['solar_kwh'] + selected_day['utility_kwh'] + selected_day['battery_kwh']
-        col_e.metric("⚡ Total (Main)", f"{total_all:.2f} units")
+        col_e.metric("⚡ Total (Main)", f"{total_all:.2f}")
         
         # Calculate percentages - now including battery (round to 2 decimals)
         source_df = pd.DataFrame({
