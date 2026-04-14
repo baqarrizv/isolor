@@ -97,57 +97,58 @@ window.addEventListener('resize', adjustForMobile);
 st.title("🔋 Inverter Analytics")
 st.markdown("Upload your inverter Excel file or use a Google Sheet link and get detailed hourly & daily insights.")
 
-# Option to choose data source - Default is Google Sheet
-data_source = st.radio("Choose Data Source:", ["🔗 Google Sheet Link", "📁 Upload Excel File"], horizontal=True, index=0)
+# Option to choose data source - Default is Google Sheet (collapsed by default)
+with st.expander("📊 Data Source", expanded=False):
+    data_source = st.radio("Choose Data Source:", ["🔗 Google Sheet Link", "📁 Upload Excel File"], horizontal=True, index=0)
 
-df = None
+    df = None
 
-# Default Google Sheet URL (hardcoded)
-DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTy3qIf4XMXKwCzy4jhWksU5wm3KqYeqvFWVSusIehRxvn783TJwoBljQdkYiE5wETGaIsY_rSGl0P3/pub?output=xlsx"
+    # Default Google Sheet URL (hardcoded)
+    DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTy3qIf4XMXKwCzy4jhWksU5wm3KqYeqvFWVSusIehRxvn783TJwoBljQdkYiE5wETGaIsY_rSGl0P3/pub?output=xlsx"
 
-if data_source == "🔗 Google Sheet Link":
-    # Google Sheet option - use hardcoded URL by default
-    use_custom_sheet = st.checkbox("Use different Google Sheet", value=False)
-    
-    if use_custom_sheet:
-        sheet_url = st.text_input("🔗 Enter Custom Google Sheet URL (Published to Web)", 
-                                  placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?output=xlsx")
-    else:
-        sheet_url = DEFAULT_SHEET_URL
-        st.info(f"📋 Using default Google Sheet")
-    
-    try:
-        # Fetch the sheet
-        response = requests.get(sheet_url)
-        response.raise_for_status()
+    if data_source == "🔗 Google Sheet Link":
+        # Google Sheet option - use hardcoded URL by default
+        use_custom_sheet = st.checkbox("Use different Google Sheet", value=False)
         
-        # Read Excel from response
-        df = pd.read_excel(BytesIO(response.content))
-        st.success("Google Sheet Loaded Successfully ✅")
+        if use_custom_sheet:
+            sheet_url = st.text_input("🔗 Enter Custom Google Sheet URL (Published to Web)", 
+                                      placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?output=xlsx")
+        else:
+            sheet_url = DEFAULT_SHEET_URL
+            st.info(f"📋 Using default Google Sheet")
         
-    except Exception as e:
-        st.error(f"⚠️ Error loading Google Sheet: {str(e)}")
-        st.info("Make sure the sheet is published to web and you have the correct URL.")
-else:
-    # Upload Excel File option
-    uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx", "xls"])
-    
-    # If user uploaded a file, use it. Otherwise check for local file.
-    if uploaded_file is not None:
         try:
-            df = pd.read_excel(uploaded_file)
-            st.success(f"Loaded uploaded file: {uploaded_file.name} ✅")
+            # Fetch the sheet
+            response = requests.get(sheet_url)
+            response.raise_for_status()
+            
+            # Read Excel from response
+            df = pd.read_excel(BytesIO(response.content))
+            st.success("Google Sheet Loaded Successfully ✅")
+            
         except Exception as e:
-            st.error(f"Error reading uploaded file: {e}")
+            st.error(f"⚠️ Error loading Google Sheet: {str(e)}")
+            st.info("Make sure the sheet is published to web and you have the correct URL.")
     else:
-        # Check if local file exists and load it
-        local_file = 'simplefile.xlsx'
-        if os.path.exists(local_file):
+        # Upload Excel File option
+        uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx", "xls"])
+        
+        # If user uploaded a file, use it. Otherwise check for local file.
+        if uploaded_file is not None:
             try:
-                df = pd.read_excel(local_file)
-                st.success(f"Loaded local file: {local_file} ✅")
+                df = pd.read_excel(uploaded_file)
+                st.success(f"Loaded uploaded file: {uploaded_file.name} ✅")
             except Exception as e:
-                st.warning(f"Could not load local file: {e}")
+                st.error(f"Error reading uploaded file: {e}")
+        else:
+            # Check if local file exists and load it
+            local_file = 'simplefile.xlsx'
+            if os.path.exists(local_file):
+                try:
+                    df = pd.read_excel(local_file)
+                    st.success(f"Loaded local file: {local_file} ✅")
+                except Exception as e:
+                    st.warning(f"Could not load local file: {e}")
 
 # Rest of the code remains the same
 if df is not None:
