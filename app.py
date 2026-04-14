@@ -285,30 +285,15 @@ if df is not None:
         # Grid portion of load = total load - battery portion
         grid_portion_load = selected_day['load_kwh'] - selected_day['battery_kwh']
         
+        col_a, col_b, col_c, col_d, col_e = st.columns(5)
+        col_a.metric("☀️ Solar", f"{selected_day['solar_kwh']:.2f} units")
+        col_b.metric("⚡ Grid", f"{selected_day['utility_kwh']:.2f} units")
+        col_c.metric("🔋 Battery (Backup)", f"{selected_day['battery_kwh']:.2f} units")
+        col_d.metric("🏠 Total Load", f"{selected_day['load_kwh']:.2f} units")
+        
         # Total = Solar + Grid (main sources only, battery is backup)
         total_all = selected_day['solar_kwh'] + selected_day['utility_kwh']
-        
-        # Custom metric display with smaller "units" text
-        def show_metric(label, value, emoji):
-            st.markdown(f"""
-            <div style="text-align: center; padding: 0.5rem; background: #f0f2f6; border-radius: 0.5rem; margin: 0.25rem;">
-                <div style="font-size: 0.8rem; color: #555;">{emoji} {label}</div>
-                <div style="font-size: 1.2rem; font-weight: bold;">{value}</div>
-                <div style="font-size: 0.7rem; color: #888;">units</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        col_a, col_b, col_c, col_d, col_e = st.columns(5)
-        with col_a:
-            show_metric("Solar", f"{selected_day['solar_kwh']:.2f}", "☀️")
-        with col_b:
-            show_metric("Grid", f"{selected_day['utility_kwh']:.2f}", "⚡")
-        with col_c:
-            show_metric("Battery (Backup)", f"{selected_day['battery_kwh']:.2f}", "🔋")
-        with col_d:
-            show_metric("Total Load", f"{selected_day['load_kwh']:.2f}", "🏠")
-        with col_e:
-            show_metric("Total (Main)", f"{total_all:.2f}", "⚡")
+        col_e.metric("⚡ Total (Main)", f"{total_all:.2f} units")
         
         # Calculate percentages - now including battery (round to 2 decimals)
         source_df = pd.DataFrame({
