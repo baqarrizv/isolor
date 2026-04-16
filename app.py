@@ -813,6 +813,14 @@ if df is not None:
     day_df_timeline = day_df.sort_values(datetime_col).reset_index(drop=True)
     day_df_dual = day_df_timeline.copy()
     
+    def format_duration(hours):
+        h = int(hours)
+        m = int((hours % 1) * 60)
+        return f"{h}h {m}m"
+    
+    def format_time(dt):
+        return dt.strftime('%H:%M')
+    
     def classify_power_source(row):
         solar = row.get('pv_input_power_1', 0) or 0
         grid = row.get('grid_power_input_active_total', 0) or 0
@@ -1089,14 +1097,6 @@ if df is not None:
     solar_periods = find_continuous_periods(day_df_timeline, 'solar')
     grid_periods = find_continuous_periods(day_df_timeline, 'grid')
     battery_periods = find_continuous_periods(day_df_timeline, 'battery')
-    
-    def format_duration(hours):
-        h = int(hours)
-        m = int((hours % 1) * 60)
-        return f"{h}h {m}m"
-    
-    def format_time(dt):
-        return dt.strftime('%H:%M')
     
     col_solar, col_grid, col_battery = st.columns(3)
     
