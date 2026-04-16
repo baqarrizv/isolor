@@ -911,6 +911,134 @@ if df is not None:
         else:
             st.info("No battery period")
 
+    # ===== DUAL SUPPLY ANALYSIS - Solar + Grid Load Distribution =====
+    st.subheader("⚡⚡ Dual Supply Analysis - Load Distribution")
+    
+    day_df_dual = day_df_timeline.copy()
+    
+    def classify_power_source(row):
+        solar = row.get('pv_input_power_1', 0) or 0
+        grid = row.get('grid_power_input_active_total', 0) or 0
+        load = row.get('ac_output_active_power_total', 0) or 0
+        
+        if load == 0:
+            return 'idle'
+        elif solar > 0 and grid > 0:
+            return 'solar_grid'
+        elif solar > 0 and grid == 0:
+            return 'solar_only'
+        elif grid > 0 and solar == 0:
+            return 'grid_only'
+        elif solar == 0 and grid == 0 and load > 0:
+            return 'battery_only'
+        else:
+            return 'other'
+    
+    day_df_dual['power_source'] = day_df_dual.apply(classify_power_source, axis=1)
+    
+    dual_records = day_df_dual[day_df_dual['power_source'] == 'solar_grid']
+    solar_only_records = day_df_dual[day_df_dual['power_source'] == 'solar_only']
+    grid_only_records = day_df_dual[day_df_dual['power_source'] == 'grid_only']
+    battery_only_records = day_df_dual[day_df_dual['power_source'] == 'battery_only']
+    
+    dual_time = len(dual_records) * time_per_row_hours
+    solar_only_time = len(solar_only_records) * time_per_row_hours
+    grid_only_time = len(grid_only_records) * time_per_row_hours
+    battery_only_time = len(battery_only_records) * time_per_row_hours
+    
+    dual_load_kwh = (dual_records['ac_output_active_power_total'].sum() * time_per_row_hours / 1000) if len(dual_records) > 0 else 0
+    solar_only_load_kwh = (solar_only_records['ac_output_active_power_total'].sum() * time_per_row_hours / 1000) if len(solar_only_records) > 0 else 0
+    grid_only_load_kwh = (grid_only_records['ac_output_active_power_total'].sum() * time_per_row_hours / 1000) if len(grid_only_records) > 0 else 0
+    battery_only_load_kwh = (battery_only_records['ac_output_active_power_total'].sum() * time_per_row_hours / 1000) if len(battery_only_records) > 0 else 0
+    
+    solar_contribution_kwh = (dual_records['pv_input_power_1'].sum() * time_per_row_hours / 1000) if len(dual_records) > 0 else 0
+    grid_contribution_kwh = (dual_records['grid_power_input_active_total'].sum() * time_per_row_hours / 1000) if len(dual_records) > 0 else 0
+    
+    st.markdown("### 📊 Power Source Distribution")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("☀️⚡ Solar+Grid", f"{format_duration(dual_time)}")
+    col2.metric("☀️ Solar Only", f"{format_duration(solar_only_time)}")
+    col3.metric("⚡ Grid Only", f"{format_duration(grid_only_time)}")
+    col4.metric("🔋 Battery Only", f"{format_duration(battery_only_time)}")
+    
+    st.markdown("### 📈 Load Distribution (kWh)")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("☀️⚡ Total Load", f"{dual_load_kwh + solar_only_load_kwh + grid_only_load_kwh + battery_only_load_kwh:.2f} kWh")
+    col2.metric("☀️⚡ Solar Source", f"{solar_only_load_kwh + solar_contribution_kwh:.2f} kWh")
+    col3.metric("⚡⚡ Grid Source", f"{grid_only_load_kwh + grid_contribution_kwh:.2f} kWh")
+    col4.metric("🔋 Battery Source", f"{battery_only_load_kwh:.2f} kWh")
+    
+    st.markdown("### 🔍 Dual Supply Periods Detail (Solar + Grid Together)")
+    
+    if len(dual_records) > 0:
+        dual_sorted = dual_records.sort_values(datetime_col).reset_index(drop=True)
+        
+        dual_periods = []
+        if len(dual_sorted) > 0:
+            start_time = dual_sorted.iloc[0][datetime_col]
+            prev_time = start_time
+            
+            for i in range(1, len(dual_sorted)):
+                current_time = dual_sorted.iloc[i][datetime_col]
+                time_diff_minutes = (current_time - prev_time).total_seconds() / 60
+                
+                if time_diff_minutes > (time_per_row_hours * 60 * 1.5):
+                    end_time = dual_sorted.iloc[i-1][datetime_col]
+                    period_records = dual_sorted[(dual_sorted[datetime_col] >= start_time) & (dual_sorted[datetime_col] <= end_time)]
+                    period_load_kwh = period_records['ac_output_active_power_total'].sum() * time_per_row_hours / 1000
+                    period_solar_kwh = period_records['pv_input_power_1'].sum() * time_per_row_hours / 1000
+                    period_grid_kwh = period_records['grid_power_input_active_total'].sum() * time_per_row_hours / 1000
+                    
+                    duration_hours = (end_time - start_time).total_seconds() / 3600
+                    dual_periods.append({
+                        'start': start_time,
+                        'end': end_time,
+                        'duration_hours': duration_hours,
+                        'load_kwh': period_load_kwh,
+                        'solar_kwh': period_solar_kwh,
+                        'grid_kwh': period_grid_kwh
+                    })
+                    start_time = current_time
+                
+                prev_time = current_time
+            
+            if len(dual_sorted) > 0:
+                end_time = dual_sorted.iloc[-1][datetime_col]
+                period_records = dual_sorted[(dual_sorted[datetime_col] >= start_time) & (dual_sorted[datetime_col] <= end_time)]
+                period_load_kwh = period_records['ac_output_active_power_total'].sum() * time_per_row_hours / 1000
+                period_solar_kwh = period_records['pv_input_power_1'].sum() * time_per_row_hours / 1000
+                period_grid_kwh = period_records['grid_power_input_active_total'].sum() * time_per_row_hours / 1000
+                
+                duration_hours = (end_time - start_time).total_seconds() / 3600
+                dual_periods.append({
+                    'start': start_time,
+                    'end': end_time,
+                    'duration_hours': duration_hours,
+                    'load_kwh': period_load_kwh,
+                    'solar_kwh': period_solar_kwh,
+                    'grid_kwh': period_grid_kwh
+                })
+        
+        if dual_periods:
+            for i, p in enumerate(dual_periods):
+                with st.expander(f"Period {i+1}: {format_time(p['start'])} - {format_time(p['end'])} ({format_duration(p['duration_hours'])})"):
+                    col_a, col_b, col_c = st.columns(3)
+                    col_a.metric("Total Load", f"{p['load_kwh']:.2f} kWh")
+                    col_b.metric("☀️ Solar Contribution", f"{p['solar_kwh']:.2f} kWh")
+                    col_c.metric("⚡ Grid Contribution", f"{p['grid_kwh']:.2f} kWh")
+                    
+                    if p['load_kwh'] > 0:
+                        solar_pct = (p['solar_kwh'] / p['load_kwh']) * 100
+                        grid_pct = (p['grid_kwh'] / p['load_kwh']) * 100
+                        st.progress(int(min(solar_pct, 100)))
+                        st.write(f"Solar: {solar_pct:.1f}% | Grid: {grid_pct:.1f}%")
+        else:
+            st.info("No dual supply periods found")
+    else:
+        st.info("No time period found when both Solar and Grid were providing power together")
+
     # ===== DAILY ENERGY SUMMARY (AT END - COLLAPSED BY DEFAULT) =====
     with st.expander("📊 Daily Energy Summary", expanded=False):
         st.dataframe(daily_display, use_container_width=True)
