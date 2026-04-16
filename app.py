@@ -1097,6 +1097,63 @@ if df is not None:
                     
                     verify = solar_to_load + grid_to_load + battery_to_load
                     st.caption(f"✓ Verify: {solar_to_load:.2f} + {grid_to_load:.2f} + {battery_to_load:.2f} = {verify:.2f}")
+        
+        # ===== Dual Supply Summary Chart =====
+        if dual_periods and len(dual_periods) > 0:
+            st.markdown("### 📊 Dual Supply - Load Breakdown Chart")
+            
+            chart_data = []
+            for i, p in enumerate(dual_periods):
+                solar_gen = p['solar_kwh']
+                grid_draw = p['grid_kwh']
+                load = p['load_kwh']
+                
+                solar_to_load = min(solar_gen, load)
+                remaining_load = load - solar_to_load
+                grid_to_load = min(grid_draw, remaining_load)
+                battery_to_load = remaining_load - grid_to_load
+                
+                solar_excess = max(0, solar_gen - load)
+                grid_to_battery = max(0, grid_draw - grid_to_load)
+                
+                chart_data.append({
+                    'Period': f"P{i+1}",
+                    '☀️ Solar Load': solar_to_load,
+                    '⚡ Grid Load': grid_to_load,
+                    '🔋 Battery Load': battery_to_load,
+                    '☀️ Solar Battery': solar_excess,
+                    '⚡ Grid Battery': grid_to_battery,
+                    'Total': load
+                })
+            
+            df_chart = pd.DataFrame(chart_data)
+            
+            fig_dual = px.bar(
+                df_chart, x='Period', 
+                y=['☀️ Solar Load', '⚡ Grid Load', '🔋 Battery Load'],
+                title="⚡⚡ Dual Supply: Load Distribution by Source (Units)",
+                barmode='stack',
+                color_discrete_map={
+                    '☀️ Solar Load': '#FFD700',
+                    '⚡ Grid Load': '#1E90FF',
+                    '🔋 Battery Load': '#00CC96'
+                }
+            )
+            fig_dual.update_layout(yaxis_title="Units")
+            st.plotly_chart(fig_dual, use_container_width=True)
+            
+            fig_battery_charge = px.bar(
+                df_chart, x='Period',
+                y=['☀️ Solar Battery', '⚡ Grid Battery'],
+                title="🔋 Battery Charging During Dual Supply (Units)",
+                barmode='group',
+                color_discrete_map={
+                    '☀️ Solar Battery': '#FFD700',
+                    '⚡ Grid Battery': '#1E90FF'
+                }
+            )
+            fig_battery_charge.update_layout(yaxis_title="Units")
+            st.plotly_chart(fig_battery_charge, use_container_width=True)
         else:
             st.info("No dual supply periods found")
     else:
