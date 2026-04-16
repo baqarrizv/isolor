@@ -1059,26 +1059,39 @@ if df is not None:
         if dual_periods:
             for i, p in enumerate(dual_periods):
                 with st.expander(f"⏰ Period {i+1}: {format_time(p['start'])} - {format_time(p['end'])} ({format_duration(p['duration_hours'])})"):
+                    
+                    # Actual calculation: Solar se load uthaya = min(solar generation, load)
+                    # Agar solar generation > load, to excess battery mein gaya
+                    solar_load_contribution = min(p['solar_kwh'], p['load_kwh'])
+                    excess_solar = max(0, p['solar_kwh'] - p['load_kwh'])
+                    grid_load_contribution = p['grid_kwh']
+                    
                     col_a, col_b, col_c = st.columns(3)
                     col_a.metric("🏠 Total Load", f"{p['load_kwh']:.2f} units")
-                    col_b.metric("☀️ Solar Power", f"{p['solar_kwh']:.2f} units")
-                    col_c.metric("⚡ Grid Power", f"{p['grid_kwh']:.2f} units")
+                    col_b.metric("☀️ Solar Generation", f"{p['solar_kwh']:.2f} units")
+                    col_c.metric("⚡ Grid Consumption", f"{p['grid_kwh']:.2f} units")
+                    
+                    st.markdown("**Actual Load Fulfilled By Each Source:**")
+                    col_x, col_y, col_z = st.columns(3)
+                    col_x.metric("☀️ Solar Se Load", f"{solar_load_contribution:.2f} units")
+                    col_y.metric("⚡ Grid Se Load", f"{grid_load_contribution:.2f} units")
+                    col_z.metric("☀️ Excess (Battery)", f"{excess_solar:.2f} units")
                     
                     st.markdown("**Average Power During This Period:**")
-                    col_x, col_y, col_z = st.columns(3)
-                    col_x.metric("☀️ Avg Solar", f"{p['avg_solar']:.0f} W")
-                    col_y.metric("⚡ Avg Grid", f"{p['avg_grid']:.0f} W")
-                    col_z.metric("🏠 Avg Load", f"{p['avg_load']:.0f} W")
+                    col_r, col_g, col_b = st.columns(3)
+                    col_r.metric("☀️ Avg Solar", f"{p['avg_solar']:.0f} W")
+                    col_g.metric("⚡ Avg Grid", f"{p['avg_grid']:.0f} W")
+                    col_b.metric("🏠 Avg Load", f"{p['avg_load']:.0f} W")
                     
                     if p['load_kwh'] > 0:
-                        solar_pct = (p['solar_kwh'] / p['load_kwh']) * 100
-                        grid_pct = (p['grid_kwh'] / p['load_kwh']) * 100
+                        solar_pct = (solar_load_contribution / p['load_kwh']) * 100
+                        grid_pct = (grid_load_contribution / p['load_kwh']) * 100
                         
-                        st.markdown(f"**Load Contribution:**")
+                        st.markdown(f"**Load Contribution Percentage:**")
                         st.progress(int(min(solar_pct, 100)))
                         st.markdown(f"""
-                        ☀️ **Solar se load:** {solar_pct:.1f}%  
-                        ⚡ **Grid se load:** {grid_pct:.1f}%
+                        ☀️ **Solar se load uthaya:** {solar_pct:.1f}%  
+                        ⚡ **Grid se load uthaya:** {grid_pct:.1f}%
                         """)
         else:
             st.info("No dual supply periods found")
