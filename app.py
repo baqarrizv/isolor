@@ -970,6 +970,27 @@ if df is not None:
     col3.metric("⚡⚡ Grid Source", f"{grid_only_load_kwh + grid_contribution_kwh:.2f} kWh")
     col4.metric("🔋 Battery Source", f"{battery_only_load_kwh:.2f} kWh")
     
+    st.markdown("### 📈 Load Distribution (Units)")
+    
+    total_load_units = (dual_records['ac_output_active_power_total'].sum() + 
+                        solar_only_records['ac_output_active_power_total'].sum() + 
+                        grid_only_records['ac_output_active_power_total'].sum() + 
+                        battery_only_records['ac_output_active_power_total'].sum()) * time_per_row_hours / 1000
+    
+    solar_source_units = (solar_only_records['pv_input_power_1'].sum() + 
+                          dual_records['pv_input_power_1'].sum()) * time_per_row_hours / 1000
+    
+    grid_source_units = (grid_only_records['grid_power_input_active_total'].sum() + 
+                         dual_records['grid_power_input_active_total'].sum()) * time_per_row_hours / 1000
+    
+    battery_source_units = battery_only_records['ac_output_active_power_total'].sum() * time_per_row_hours / 1000
+    
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("🏠 Total Load", f"{total_load_units:.2f} units")
+    col2.metric("☀️ From Solar", f"{solar_source_units:.2f} units")
+    col3.metric("⚡ From Grid", f"{grid_source_units:.2f} units")
+    col4.metric("🔋 From Battery", f"{battery_source_units:.2f} units")
+    
     st.markdown("### 🔍 Dual Supply Periods Detail (Solar + Grid Together)")
     
     if len(dual_records) > 0:
