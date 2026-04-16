@@ -911,6 +911,164 @@ if df is not None:
         else:
             st.info("No battery period")
 
+    # ===== OTHER SECTIONS (AT END - COLLAPSED BY DEFAULT) =====
+                current_time = dual_sorted.iloc[i][datetime_col]
+                time_diff_minutes = (current_time - prev_time).total_seconds() / 60
+                
+                if time_diff_minutes > (time_per_row_hours * 60 * 1.5):
+                    end_time = dual_sorted.iloc[i-1][datetime_col]
+                    period_records = dual_sorted[(dual_sorted[datetime_col] >= start_time) & (dual_sorted[datetime_col] <= end_time)]
+                    period_load_kwh = period_records['ac_output_active_power_total'].sum() * time_per_row_hours / 1000
+                    period_solar_kwh = period_records['pv_input_power_1'].sum() * time_per_row_hours / 1000
+                    period_grid_kwh = period_records['grid_power_input_active_total'].sum() * time_per_row_hours / 1000
+                    
+                    avg_solar_power = period_records['pv_input_power_1'].mean()
+                    avg_grid_power = period_records['grid_power_input_active_total'].mean()
+                    avg_load_power = period_records['ac_output_active_power_total'].mean()
+                    
+                    duration_hours = (end_time - start_time).total_seconds() / 3600
+                    dual_periods.append({
+                        'start': start_time,
+                        'end': end_time,
+                        'duration_hours': duration_hours,
+                        'load_kwh': period_load_kwh,
+                        'solar_kwh': period_solar_kwh,
+                        'grid_kwh': period_grid_kwh,
+                        'avg_solar': avg_solar_power,
+                        'avg_grid': avg_grid_power,
+                        'avg_load': avg_load_power
+                    })
+                    start_time = current_time
+                
+                prev_time = current_time
+            
+            if len(dual_sorted) > 0:
+                end_time = dual_sorted.iloc[-1][datetime_col]
+                period_records = dual_sorted[(dual_sorted[datetime_col] >= start_time) & (dual_sorted[datetime_col] <= end_time)]
+                period_load_kwh = period_records['ac_output_active_power_total'].sum() * time_per_row_hours / 1000
+                period_solar_kwh = period_records['pv_input_power_1'].sum() * time_per_row_hours / 1000
+                period_grid_kwh = period_records['grid_power_input_active_total'].sum() * time_per_row_hours / 1000
+                
+                avg_solar_power = period_records['pv_input_power_1'].mean()
+                avg_grid_power = period_records['grid_power_input_active_total'].mean()
+                avg_load_power = period_records['ac_output_active_power_total'].mean()
+                
+                duration_hours = (end_time - start_time).total_seconds() / 3600
+                dual_periods.append({
+                    'start': start_time,
+                    'end': end_time,
+                    'duration_hours': duration_hours,
+                    'load_kwh': period_load_kwh,
+                    'solar_kwh': period_solar_kwh,
+                    'grid_kwh': period_grid_kwh,
+                    'avg_solar': avg_solar_power,
+                    'avg_grid': avg_grid_power,
+                    'avg_load': avg_load_power
+                })
+        
+        if dual_periods:
+            for i, p in enumerate(dual_periods):
+                with st.expander(f"⏰ Period {i+1}: {format_time(p['start'])} - {format_time(p['end'])} ({format_duration(p['duration_hours'])})"):
+                    
+                    solar_gen = p['solar_kwh']
+                    grid_draw = p['grid_kwh']
+                    load = p['load_kwh']
+                    
+                    solar_to_load = min(solar_gen, load)
+                    remaining_load = load - solar_to_load
+                    grid_to_load = min(grid_draw, remaining_load)
+                    remaining_grid = grid_draw - grid_to_load
+                    battery_to_load = remaining_load - grid_to_load
+                    
+                    solar_excess = max(0, solar_gen - load)
+                    grid_to_battery = remaining_grid
+                    
+                    col_a, col_b, col_c = st.columns(3)
+                    col_a.metric("🏠 Total Load", f"{load:.2f} units")
+                    col_b.metric("☀️ Solar Generate", f"{solar_gen:.2f} units")
+                    col_c.metric("⚡ Grid Draw", f"{grid_draw:.2f} units")
+                    
+                    st.markdown("**Kitna Load kis source se uthaya:**")
+                    col_x, col_y, col_z = st.columns(3)
+                    col_x.metric("☀️ Solar Se", f"{solar_to_load:.2f} units")
+                    col_y.metric("⚡ Grid Se", f"{grid_to_load:.2f} units")
+                    col_z.metric("🔋 Battery Se", f"{battery_to_load:.2f} units")
+                    
+                    st.markdown("**Battery Charging:**")
+                    col_bat1, col_bat2 = st.columns(2)
+                    col_bat1.metric("☀️ Solar Excess", f"{solar_excess:.2f} units")
+                    col_bat2.metric("⚡ Grid", f"{grid_to_battery:.2f} units")
+                    
+                    st.markdown("**Average Power:**")
+                    col_r, col_g, col_b = st.columns(3)
+                    col_r.metric("☀️ Solar", f"{p['avg_solar']:.0f} W")
+                    col_g.metric("⚡ Grid", f"{p['avg_grid']:.0f} W")
+                    col_b.metric("🏠 Load", f"{p['avg_load']:.0f} W")
+                    
+                    verify = solar_to_load + grid_to_load + battery_to_load
+                    st.caption(f"✓ Verify: {solar_to_load:.2f} + {grid_to_load:.2f} + {battery_to_load:.2f} = {verify:.2f}")
+        
+        # ===== Dual Supply Summary Chart =====
+        if dual_periods and len(dual_periods) > 0:
+            st.markdown("### 📊 Dual Supply - Load Breakdown Chart")
+            
+            chart_data = []
+            for i, p in enumerate(dual_periods):
+                solar_gen = p['solar_kwh']
+                grid_draw = p['grid_kwh']
+                load = p['load_kwh']
+                
+                solar_to_load = min(solar_gen, load)
+                remaining_load = load - solar_to_load
+                grid_to_load = min(grid_draw, remaining_load)
+                battery_to_load = remaining_load - grid_to_load
+                
+                solar_excess = max(0, solar_gen - load)
+                grid_to_battery = max(0, grid_draw - grid_to_load)
+                
+                chart_data.append({
+                    'Period': f"P{i+1}",
+                    '☀️ Solar Load': solar_to_load,
+                    '⚡ Grid Load': grid_to_load,
+                    '🔋 Battery Load': battery_to_load,
+                    '☀️ Solar Battery': solar_excess,
+                    '⚡ Grid Battery': grid_to_battery,
+                    'Total': load
+                })
+            
+            df_chart = pd.DataFrame(chart_data)
+            
+            fig_dual = px.bar(
+                df_chart, x='Period', 
+                y=['☀️ Solar Load', '⚡ Grid Load', '🔋 Battery Load'],
+                title="⚡⚡ Dual Supply: Load Distribution by Source (Units)",
+                barmode='stack',
+                color_discrete_map={
+                    '☀️ Solar Load': '#FFD700',
+                    '⚡ Grid Load': '#1E90FF',
+                    '🔋 Battery Load': '#00CC96'
+                }
+            )
+            fig_dual.update_layout(yaxis_title="Units")
+            st.plotly_chart(fig_dual, use_container_width=True)
+            
+            fig_battery_charge = px.bar(
+                df_chart, x='Period',
+                y=['☀️ Solar Battery', '⚡ Grid Battery'],
+                title="🔋 Battery Charging During Dual Supply (Units)",
+                barmode='group',
+                color_discrete_map={
+                    '☀️ Solar Battery': '#FFD700',
+                    '⚡ Grid Battery': '#1E90FF'
+                }
+            )
+            fig_battery_charge.update_layout(yaxis_title="Units")
+            st.plotly_chart(fig_battery_charge, use_container_width=True)
+        else:
+            st.info("No dual supply periods found")
+    else:
+        st.info("No time period found when both Solar and Grid were providing power together")
+
     # ===== DUAL SUPPLY ANALYSIS - Solar + Grid Load Distribution =====
     st.subheader("⚡⚡ Dual Supply Analysis - Load Distribution")
     
@@ -1069,7 +1227,6 @@ if df is not None:
                     verify = solar_to_load + grid_to_load + battery_to_load
                     st.caption(f"✓ Verify: {solar_to_load:.2f} + {grid_to_load:.2f} + {battery_to_load:.2f} = {verify:.2f}")
         
-        # ===== Dual Supply Summary Chart =====
         if dual_periods and len(dual_periods) > 0:
             st.markdown("### 📊 Dual Supply - Load Breakdown Chart")
             
@@ -1111,7 +1268,11 @@ if df is not None:
                 }
             )
             fig_dual.update_layout(yaxis_title="Units")
-            st.plotly_chart(fig_dual, use_container_width=True)
+            st.plotly_chart(fig_dual, use_container_width=True, config={
+                'responsive': True,
+                'displayModeBar': True,
+                'modeBarButtonsToRemove': ['lasso2d', 'select2d']
+            })
             
             fig_battery_charge = px.bar(
                 df_chart, x='Period',
@@ -1124,15 +1285,19 @@ if df is not None:
                 }
             )
             fig_battery_charge.update_layout(yaxis_title="Units")
-            st.plotly_chart(fig_battery_charge, use_container_width=True)
+            st.plotly_chart(fig_battery_charge, use_container_width=True, config={
+                'responsive': True,
+                'displayModeBar': True,
+                'modeBarButtonsToRemove': ['lasso2d', 'select2d']
+            })
         else:
             st.info("No dual supply periods found")
     else:
         st.info("No time period found when both Solar and Grid were providing power together")
-
-    # ===== DAILY ENERGY SUMMARY (AT END - COLLAPSED BY DEFAULT) =====
-    with st.expander("📊 Daily Energy Summary", expanded=False):
-        st.dataframe(daily_display, use_container_width=True)
+    
+    # ===== DAILY ENERGY SUMMARY =====
+    st.subheader("📊 Daily Energy Summary")
+    st.dataframe(daily_display, use_container_width=True)
     
     # ===== OTHER SECTIONS (AT END - COLLAPSED BY DEFAULT) =====
     # Battery Status
