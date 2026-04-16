@@ -785,7 +785,7 @@ if df is not None:
         'Hours_Display': [f"{int(solar_time_hours)}h {int(round((solar_time_hours % 1) * 60))}m", f"{int(grid_time_hours)}h {int(round((grid_time_hours % 1) * 60))}m", f"{int(battery_time_hours)}h {int(round((battery_time_hours % 1) * 60))}m"],
         'Records': [len(solar_records), len(grid_records), len(battery_records)]
     })
-    fig_mode = px.bar(mode_data, x='Mode', y='Hours', title="Total Time in Each Mode", color='Mode',
+    fig_mode = px.bar(mode_data, x='Mode', y='Hours', title="Total Time in Each Mode.", color='Mode',
                       color_discrete_map={'☀️ Solar': '#FFD700', '⚡ Grid': '#1E90FF', '🔋 Battery': '#00CC96'})
     fig_mode.update_layout(yaxis_title="Hours")
     
