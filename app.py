@@ -1060,39 +1060,43 @@ if df is not None:
             for i, p in enumerate(dual_periods):
                 with st.expander(f"⏰ Period {i+1}: {format_time(p['start'])} - {format_time(p['end'])} ({format_duration(p['duration_hours'])})"):
                     
-                    # Actual calculation: Solar se load uthaya = min(solar generation, load)
-                    # Agar solar generation > load, to excess battery mein gaya
-                    solar_load_contribution = min(p['solar_kwh'], p['load_kwh'])
-                    excess_solar = max(0, p['solar_kwh'] - p['load_kwh'])
-                    grid_load_contribution = p['grid_kwh']
+                    solar_gen = p['solar_kwh']
+                    grid_draw = p['grid_kwh']
+                    load = p['load_kwh']
+                    
+                    solar_to_load = min(solar_gen, load)
+                    remaining_load = load - solar_to_load
+                    grid_to_load = min(grid_draw, remaining_load)
+                    remaining_grid = grid_draw - grid_to_load
+                    battery_to_load = remaining_load - grid_to_load
+                    
+                    solar_excess = max(0, solar_gen - load)
+                    grid_to_battery = remaining_grid
                     
                     col_a, col_b, col_c = st.columns(3)
-                    col_a.metric("🏠 Total Load", f"{p['load_kwh']:.2f} units")
-                    col_b.metric("☀️ Solar Generation", f"{p['solar_kwh']:.2f} units")
-                    col_c.metric("⚡ Grid Consumption", f"{p['grid_kwh']:.2f} units")
+                    col_a.metric("🏠 Total Load", f"{load:.2f} units")
+                    col_b.metric("☀️ Solar Generate", f"{solar_gen:.2f} units")
+                    col_c.metric("⚡ Grid Draw", f"{grid_draw:.2f} units")
                     
-                    st.markdown("**Actual Load Fulfilled By Each Source:**")
+                    st.markdown("**Kitna Load kis source se uthaya:**")
                     col_x, col_y, col_z = st.columns(3)
-                    col_x.metric("☀️ Solar Se Load", f"{solar_load_contribution:.2f} units")
-                    col_y.metric("⚡ Grid Se Load", f"{grid_load_contribution:.2f} units")
-                    col_z.metric("☀️ Excess (Battery)", f"{excess_solar:.2f} units")
+                    col_x.metric("☀️ Solar Se", f"{solar_to_load:.2f} units")
+                    col_y.metric("⚡ Grid Se", f"{grid_to_load:.2f} units")
+                    col_z.metric("🔋 Battery Se", f"{battery_to_load:.2f} units")
                     
-                    st.markdown("**Average Power During This Period:**")
+                    st.markdown("**Battery Charging:**")
+                    col_bat1, col_bat2 = st.columns(2)
+                    col_bat1.metric("☀️ Solar Excess", f"{solar_excess:.2f} units")
+                    col_bat2.metric("⚡ Grid", f"{grid_to_battery:.2f} units")
+                    
+                    st.markdown("**Average Power:**")
                     col_r, col_g, col_b = st.columns(3)
-                    col_r.metric("☀️ Avg Solar", f"{p['avg_solar']:.0f} W")
-                    col_g.metric("⚡ Avg Grid", f"{p['avg_grid']:.0f} W")
-                    col_b.metric("🏠 Avg Load", f"{p['avg_load']:.0f} W")
+                    col_r.metric("☀️ Solar", f"{p['avg_solar']:.0f} W")
+                    col_g.metric("⚡ Grid", f"{p['avg_grid']:.0f} W")
+                    col_b.metric("🏠 Load", f"{p['avg_load']:.0f} W")
                     
-                    if p['load_kwh'] > 0:
-                        solar_pct = (solar_load_contribution / p['load_kwh']) * 100
-                        grid_pct = (grid_load_contribution / p['load_kwh']) * 100
-                        
-                        st.markdown(f"**Load Contribution Percentage:**")
-                        st.progress(int(min(solar_pct, 100)))
-                        st.markdown(f"""
-                        ☀️ **Solar se load uthaya:** {solar_pct:.1f}%  
-                        ⚡ **Grid se load uthaya:** {grid_pct:.1f}%
-                        """)
+                    verify = solar_to_load + grid_to_load + battery_to_load
+                    st.caption(f"✓ Verify: {solar_to_load:.2f} + {grid_to_load:.2f} + {battery_to_load:.2f} = {verify:.2f}")
         else:
             st.info("No dual supply periods found")
     else:
