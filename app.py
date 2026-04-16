@@ -807,110 +807,6 @@ if df is not None:
     col2.metric("⚡ Grid Time", f"{int(grid_time_hours)}h {int((grid_time_hours % 1) * 60)}m")
     col3.metric("🔋 Battery Time", f"{int(battery_time_hours)}h {int((battery_time_hours % 1) * 60)}m")
 
-    # ===== MODE TIMELINE - Show Start Time and End Time for each period =====
-    st.subheader("🕐 Mode Timeline - Start & End Times")
-    
-    day_df_timeline = day_df.sort_values(datetime_col).reset_index(drop=True)
-    
-    def get_mode(row):
-        if row['grid_power_input_active_total'] > 0:
-            return 'grid'
-        elif row['pv_input_power_1'] > 0:
-            return 'solar'
-        elif row['ac_output_active_power_total'] > 0:
-            return 'battery'
-        else:
-            return 'idle'
-    
-    day_df_timeline['mode'] = day_df_timeline.apply(get_mode, axis=1)
-    
-    def find_continuous_periods(df, mode):
-        mode_df = df[df['mode'] == mode].copy()
-        if len(mode_df) == 0:
-            return []
-        
-        periods = []
-        mode_df = mode_df.sort_values(datetime_col).reset_index(drop=True)
-        
-        start_time = mode_df.iloc[0][datetime_col]
-        prev_time = start_time
-        
-        for i in range(1, len(mode_df)):
-            current_time = mode_df.iloc[i][datetime_col]
-            time_diff_minutes = (current_time - prev_time).total_seconds() / 60
-            
-            if time_diff_minutes > (time_per_row_hours * 60 * 1.5):
-                end_time = mode_df.iloc[i-1][datetime_col]
-                duration_hours = (end_time - start_time).total_seconds() / 3600
-                periods.append({
-                    'start': start_time,
-                    'end': end_time,
-                    'duration_hours': duration_hours
-                })
-                start_time = current_time
-            
-            prev_time = current_time
-        
-        end_time = mode_df.iloc[-1][datetime_col]
-        duration_hours = (end_time - start_time).total_seconds() / 3600
-        periods.append({
-            'start': start_time,
-            'end': end_time,
-            'duration_hours': duration_hours
-        })
-        
-        return periods
-    
-    solar_periods = find_continuous_periods(day_df_timeline, 'solar')
-    grid_periods = find_continuous_periods(day_df_timeline, 'grid')
-    battery_periods = find_continuous_periods(day_df_timeline, 'battery')
-    
-    def format_duration(hours):
-        h = int(hours)
-        m = int((hours % 1) * 60)
-        return f"{h}h {m}m"
-    
-    def format_time(dt):
-        return dt.strftime('%H:%M')
-    
-    col_solar, col_grid, col_battery = st.columns(3)
-    
-    with col_solar:
-        st.markdown("#### ☀️ Solar")
-        if solar_periods:
-            for i, p in enumerate(solar_periods):
-                st.write(f"**Period {i+1}:**")
-                st.write(f"⏰ {format_time(p['start'])} - {format_time(p['end'])}")
-                st.write(f"⏱️ Duration: {format_duration(p['duration_hours'])}")
-                st.divider()
-            st.success(f"Total: {format_duration(solar_time_hours)}")
-        else:
-            st.info("No solar period")
-    
-    with col_grid:
-        st.markdown("#### ⚡ Grid")
-        if grid_periods:
-            for i, p in enumerate(grid_periods):
-                st.write(f"**Period {i+1}:**")
-                st.write(f"⏰ {format_time(p['start'])} - {format_time(p['end'])}")
-                st.write(f"⏱️ Duration: {format_duration(p['duration_hours'])}")
-                st.divider()
-            st.success(f"Total: {format_duration(grid_time_hours)}")
-        else:
-            st.info("No grid period")
-    
-    with col_battery:
-        st.markdown("#### 🔋 Battery")
-        if battery_periods:
-            for i, p in enumerate(battery_periods):
-                st.write(f"**Period {i+1}:**")
-                st.write(f"⏰ {format_time(p['start'])} - {format_time(p['end'])}")
-                st.write(f"⏱️ Duration: {format_duration(p['duration_hours'])}")
-                st.divider()
-            st.success(f"Total: {format_duration(battery_time_hours)}")
-        else:
-            st.info("No battery period")
-
     # ===== DUAL SUPPLY ANALYSIS - Solar + Grid Load Distribution =====
     st.subheader("⚡⚡ Dual Supply Analysis - Load Distribution")
     
@@ -1136,6 +1032,110 @@ if df is not None:
             st.info("No dual supply periods found")
     else:
         st.info("No time period found when both Solar and Grid were providing power together")
+    
+    # ===== MODE TIMELINE - Show Start Time and End Time for each period =====
+    st.subheader("🕐 Mode Timeline - Start & End Times")
+    
+    day_df_timeline = day_df.sort_values(datetime_col).reset_index(drop=True)
+    
+    def get_mode(row):
+        if row['grid_power_input_active_total'] > 0:
+            return 'grid'
+        elif row['pv_input_power_1'] > 0:
+            return 'solar'
+        elif row['ac_output_active_power_total'] > 0:
+            return 'battery'
+        else:
+            return 'idle'
+    
+    day_df_timeline['mode'] = day_df_timeline.apply(get_mode, axis=1)
+    
+    def find_continuous_periods(df, mode):
+        mode_df = df[df['mode'] == mode].copy()
+        if len(mode_df) == 0:
+            return []
+        
+        periods = []
+        mode_df = mode_df.sort_values(datetime_col).reset_index(drop=True)
+        
+        start_time = mode_df.iloc[0][datetime_col]
+        prev_time = start_time
+        
+        for i in range(1, len(mode_df)):
+            current_time = mode_df.iloc[i][datetime_col]
+            time_diff_minutes = (current_time - prev_time).total_seconds() / 60
+            
+            if time_diff_minutes > (time_per_row_hours * 60 * 1.5):
+                end_time = mode_df.iloc[i-1][datetime_col]
+                duration_hours = (end_time - start_time).total_seconds() / 3600
+                periods.append({
+                    'start': start_time,
+                    'end': end_time,
+                    'duration_hours': duration_hours
+                })
+                start_time = current_time
+            
+            prev_time = current_time
+        
+        end_time = mode_df.iloc[-1][datetime_col]
+        duration_hours = (end_time - start_time).total_seconds() / 3600
+        periods.append({
+            'start': start_time,
+            'end': end_time,
+            'duration_hours': duration_hours
+        })
+        
+        return periods
+    
+    solar_periods = find_continuous_periods(day_df_timeline, 'solar')
+    grid_periods = find_continuous_periods(day_df_timeline, 'grid')
+    battery_periods = find_continuous_periods(day_df_timeline, 'battery')
+    
+    def format_duration(hours):
+        h = int(hours)
+        m = int((hours % 1) * 60)
+        return f"{h}h {m}m"
+    
+    def format_time(dt):
+        return dt.strftime('%H:%M')
+    
+    col_solar, col_grid, col_battery = st.columns(3)
+    
+    with col_solar:
+        st.markdown("#### ☀️ Solar")
+        if solar_periods:
+            for i, p in enumerate(solar_periods):
+                st.write(f"**Period {i+1}:**")
+                st.write(f"⏰ {format_time(p['start'])} - {format_time(p['end'])}")
+                st.write(f"⏱️ Duration: {format_duration(p['duration_hours'])}")
+                st.divider()
+            st.success(f"Total: {format_duration(solar_time_hours)}")
+        else:
+            st.info("No solar period")
+    
+    with col_grid:
+        st.markdown("#### ⚡ Grid")
+        if grid_periods:
+            for i, p in enumerate(grid_periods):
+                st.write(f"**Period {i+1}:**")
+                st.write(f"⏰ {format_time(p['start'])} - {format_time(p['end'])}")
+                st.write(f"⏱️ Duration: {format_duration(p['duration_hours'])}")
+                st.divider()
+            st.success(f"Total: {format_duration(grid_time_hours)}")
+        else:
+            st.info("No grid period")
+    
+    with col_battery:
+        st.markdown("#### 🔋 Battery")
+        if battery_periods:
+            for i, p in enumerate(battery_periods):
+                st.write(f"**Period {i+1}:**")
+                st.write(f"⏰ {format_time(p['start'])} - {format_time(p['end'])}")
+                st.write(f"⏱️ Duration: {format_duration(p['duration_hours'])}")
+                st.divider()
+            st.success(f"Total: {format_duration(battery_time_hours)}")
+        else:
+            st.info("No battery period")
     
     # ===== DAILY ENERGY SUMMARY =====
     st.subheader("📊 Daily Energy Summary")
