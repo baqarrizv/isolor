@@ -810,6 +810,7 @@ if df is not None:
     # ===== DUAL SUPPLY ANALYSIS - Solar + Grid Load Distribution =====
     st.subheader("⚡⚡ Dual Supply Analysis - Load Distribution")
     
+    day_df_timeline = day_df.sort_values(datetime_col).reset_index(drop=True)
     day_df_dual = day_df_timeline.copy()
     
     def classify_power_source(row):
@@ -1035,8 +1036,6 @@ if df is not None:
     
     # ===== MODE TIMELINE - Show Start Time and End Time for each period =====
     st.subheader("🕐 Mode Timeline - Start & End Times")
-    
-    day_df_timeline = day_df.sort_values(datetime_col).reset_index(drop=True)
     
     def get_mode(row):
         if row['grid_power_input_active_total'] > 0:
