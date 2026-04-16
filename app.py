@@ -991,7 +991,7 @@ if df is not None:
     col3.metric("⚡ From Grid", f"{grid_source_units:.2f} units")
     col4.metric("🔋 From Battery", f"{battery_source_units:.2f} units")
     
-    st.markdown("### 🔍 Dual Supply Periods Detail (Solar + Grid Together)")
+    st.markdown("### 🔍 Dual Supply Periods Detail (Solar + Grid se load kitna uthaya)")
     
     if len(dual_records) > 0:
         dual_sorted = dual_records.sort_values(datetime_col).reset_index(drop=True)
@@ -1012,6 +1012,10 @@ if df is not None:
                     period_solar_kwh = period_records['pv_input_power_1'].sum() * time_per_row_hours / 1000
                     period_grid_kwh = period_records['grid_power_input_active_total'].sum() * time_per_row_hours / 1000
                     
+                    avg_solar_power = period_records['pv_input_power_1'].mean()
+                    avg_grid_power = period_records['grid_power_input_active_total'].mean()
+                    avg_load_power = period_records['ac_output_active_power_total'].mean()
+                    
                     duration_hours = (end_time - start_time).total_seconds() / 3600
                     dual_periods.append({
                         'start': start_time,
@@ -1019,7 +1023,10 @@ if df is not None:
                         'duration_hours': duration_hours,
                         'load_kwh': period_load_kwh,
                         'solar_kwh': period_solar_kwh,
-                        'grid_kwh': period_grid_kwh
+                        'grid_kwh': period_grid_kwh,
+                        'avg_solar': avg_solar_power,
+                        'avg_grid': avg_grid_power,
+                        'avg_load': avg_load_power
                     })
                     start_time = current_time
                 
@@ -1032,6 +1039,10 @@ if df is not None:
                 period_solar_kwh = period_records['pv_input_power_1'].sum() * time_per_row_hours / 1000
                 period_grid_kwh = period_records['grid_power_input_active_total'].sum() * time_per_row_hours / 1000
                 
+                avg_solar_power = period_records['pv_input_power_1'].mean()
+                avg_grid_power = period_records['grid_power_input_active_total'].mean()
+                avg_load_power = period_records['ac_output_active_power_total'].mean()
+                
                 duration_hours = (end_time - start_time).total_seconds() / 3600
                 dual_periods.append({
                     'start': start_time,
@@ -1039,22 +1050,36 @@ if df is not None:
                     'duration_hours': duration_hours,
                     'load_kwh': period_load_kwh,
                     'solar_kwh': period_solar_kwh,
-                    'grid_kwh': period_grid_kwh
+                    'grid_kwh': period_grid_kwh,
+                    'avg_solar': avg_solar_power,
+                    'avg_grid': avg_grid_power,
+                    'avg_load': avg_load_power
                 })
         
         if dual_periods:
             for i, p in enumerate(dual_periods):
-                with st.expander(f"Period {i+1}: {format_time(p['start'])} - {format_time(p['end'])} ({format_duration(p['duration_hours'])})"):
+                with st.expander(f"⏰ Period {i+1}: {format_time(p['start'])} - {format_time(p['end'])} ({format_duration(p['duration_hours'])})"):
                     col_a, col_b, col_c = st.columns(3)
-                    col_a.metric("Total Load", f"{p['load_kwh']:.2f} kWh")
-                    col_b.metric("☀️ Solar Contribution", f"{p['solar_kwh']:.2f} kWh")
-                    col_c.metric("⚡ Grid Contribution", f"{p['grid_kwh']:.2f} kWh")
+                    col_a.metric("🏠 Total Load", f"{p['load_kwh']:.2f} units")
+                    col_b.metric("☀️ Solar Power", f"{p['solar_kwh']:.2f} units")
+                    col_c.metric("⚡ Grid Power", f"{p['grid_kwh']:.2f} units")
+                    
+                    st.markdown("**Average Power During This Period:**")
+                    col_x, col_y, col_z = st.columns(3)
+                    col_x.metric("☀️ Avg Solar", f"{p['avg_solar']:.0f} W")
+                    col_y.metric("⚡ Avg Grid", f"{p['avg_grid']:.0f} W")
+                    col_z.metric("🏠 Avg Load", f"{p['avg_load']:.0f} W")
                     
                     if p['load_kwh'] > 0:
                         solar_pct = (p['solar_kwh'] / p['load_kwh']) * 100
                         grid_pct = (p['grid_kwh'] / p['load_kwh']) * 100
+                        
+                        st.markdown(f"**Load Contribution:**")
                         st.progress(int(min(solar_pct, 100)))
-                        st.write(f"Solar: {solar_pct:.1f}% | Grid: {grid_pct:.1f}%")
+                        st.markdown(f"""
+                        ☀️ **Solar se load:** {solar_pct:.1f}%  
+                        ⚡ **Grid se load:** {grid_pct:.1f}%
+                        """)
         else:
             st.info("No dual supply periods found")
     else:
