@@ -962,8 +962,6 @@ if df is not None:
     col3.metric("⚡ Grid Only", f"{format_duration(grid_only_time)}")
     col4.metric("🔋 Battery Only", f"{format_duration(battery_only_time)}")
     
-    st.markdown("### 🔍 Dual Supply Periods Detail (Solar + Grid se load kitna uthaya)")
-    
     if len(dual_records) > 0:
         dual_sorted = dual_records.sort_values(datetime_col).reset_index(drop=True)
         
@@ -1026,48 +1024,6 @@ if df is not None:
                     'avg_grid': avg_grid_power,
                     'avg_load': avg_load_power
                 })
-        
-        if dual_periods:
-            for i, p in enumerate(dual_periods):
-                with st.expander(f"⏰ Period {i+1}: {format_time(p['start'])} - {format_time(p['end'])} ({format_duration(p['duration_hours'])})"):
-                    
-                    solar_gen = p['solar_kwh']
-                    grid_draw = p['grid_kwh']
-                    load = p['load_kwh']
-                    
-                    solar_to_load = min(solar_gen, load)
-                    remaining_load = load - solar_to_load
-                    grid_to_load = min(grid_draw, remaining_load)
-                    remaining_grid = grid_draw - grid_to_load
-                    battery_to_load = remaining_load - grid_to_load
-                    
-                    solar_excess = max(0, solar_gen - load)
-                    grid_to_battery = remaining_grid
-                    
-                    col_a, col_b, col_c = st.columns(3)
-                    col_a.metric("🏠 Total Load", f"{load:.2f} units")
-                    col_b.metric("☀️ Solar Generate", f"{solar_gen:.2f} units")
-                    col_c.metric("⚡ Grid Draw", f"{grid_draw:.2f} units")
-                    
-                    st.markdown("**Kitna Load kis source se uthaya:**")
-                    col_x, col_y, col_z = st.columns(3)
-                    col_x.metric("☀️ Solar Se", f"{solar_to_load:.2f} units")
-                    col_y.metric("⚡ Grid Se", f"{grid_to_load:.2f} units")
-                    col_z.metric("🔋 Battery Se", f"{battery_to_load:.2f} units")
-                    
-                    st.markdown("**Battery Charging:**")
-                    col_bat1, col_bat2 = st.columns(2)
-                    col_bat1.metric("☀️ Solar Excess", f"{solar_excess:.2f} units")
-                    col_bat2.metric("⚡ Grid", f"{grid_to_battery:.2f} units")
-                    
-                    st.markdown("**Average Power:**")
-                    col_r, col_g, col_b = st.columns(3)
-                    col_r.metric("☀️ Solar", f"{p['avg_solar']:.0f} W")
-                    col_g.metric("⚡ Grid", f"{p['avg_grid']:.0f} W")
-                    col_b.metric("🏠 Load", f"{p['avg_load']:.0f} W")
-                    
-                    verify = solar_to_load + grid_to_load + battery_to_load
-                    st.caption(f"✓ Verify: {solar_to_load:.2f} + {grid_to_load:.2f} + {battery_to_load:.2f} = {verify:.2f}")
         
         if dual_periods and len(dual_periods) > 0:
             st.markdown("### 📊 Dual Supply - Load Breakdown Chart")
@@ -1132,6 +1088,50 @@ if df is not None:
                 'displayModeBar': True,
                 'modeBarButtonsToRemove': ['lasso2d', 'select2d']
             })
+            
+            # Dual Supply Periods Detail - AFTER Battery Charging chart
+            st.markdown("### 🔍 Dual Supply Periods Detail (Solar + Grid se load kitna uthaya)")
+            
+            for i, p in enumerate(dual_periods):
+                with st.expander(f"⏰ Period {i+1}: {format_time(p['start'])} - {format_time(p['end'])} ({format_duration(p['duration_hours'])})"):
+                    
+                    solar_gen = p['solar_kwh']
+                    grid_draw = p['grid_kwh']
+                    load = p['load_kwh']
+                    
+                    solar_to_load = min(solar_gen, load)
+                    remaining_load = load - solar_to_load
+                    grid_to_load = min(grid_draw, remaining_load)
+                    remaining_grid = grid_draw - grid_to_load
+                    battery_to_load = remaining_load - grid_to_load
+                    
+                    solar_excess = max(0, solar_gen - load)
+                    grid_to_battery = remaining_grid
+                    
+                    col_a, col_b, col_c = st.columns(3)
+                    col_a.metric("🏠 Total Load", f"{load:.2f} units")
+                    col_b.metric("☀️ Solar Generate", f"{solar_gen:.2f} units")
+                    col_c.metric("⚡ Grid Draw", f"{grid_draw:.2f} units")
+                    
+                    st.markdown("**Kitna Load kis source se uthaya:**")
+                    col_x, col_y, col_z = st.columns(3)
+                    col_x.metric("☀️ Solar Se", f"{solar_to_load:.2f} units")
+                    col_y.metric("⚡ Grid Se", f"{grid_to_load:.2f} units")
+                    col_z.metric("🔋 Battery Se", f"{battery_to_load:.2f} units")
+                    
+                    st.markdown("**Battery Charging:**")
+                    col_bat1, col_bat2 = st.columns(2)
+                    col_bat1.metric("☀️ Solar Excess", f"{solar_excess:.2f} units")
+                    col_bat2.metric("⚡ Grid", f"{grid_to_battery:.2f} units")
+                    
+                    st.markdown("**Average Power:**")
+                    col_r, col_g, col_b = st.columns(3)
+                    col_r.metric("☀️ Solar", f"{p['avg_solar']:.0f} W")
+                    col_g.metric("⚡ Grid", f"{p['avg_grid']:.0f} W")
+                    col_b.metric("🏠 Load", f"{p['avg_load']:.0f} W")
+                    
+                    verify = solar_to_load + grid_to_load + battery_to_load
+                    st.caption(f"✓ Verify: {solar_to_load:.2f} + {grid_to_load:.2f} + {battery_to_load:.2f} = {verify:.2f}")
         else:
             st.info("No dual supply periods found")
     else:
