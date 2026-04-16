@@ -995,10 +995,8 @@ if df is not None:
             })
             
             # Dual Supply Periods Detail - AFTER Battery Charging chart
-            st.markdown("### 🔍 Dual Supply Periods Detail (Solar + Grid se load kitna uthaya)")
-            
             for i, p in enumerate(dual_periods):
-                with st.expander(f"⏰ Period {i+1}: {format_time(p['start'])} - {format_time(p['end'])} ({format_duration(p['duration_hours'])})"):
+                with st.expander(f"⏰ Solar + Grid Period {i+1}: {format_time(p['start'])} - {format_time(p['end'])} ({format_duration(p['duration_hours'])})"):
                     
                     solar_gen = p['solar_kwh']
                     grid_draw = p['grid_kwh']
@@ -1018,7 +1016,7 @@ if df is not None:
                     col_b.metric("☀️ Solar Generate", f"{solar_gen:.2f} units")
                     col_c.metric("⚡ Grid Draw", f"{grid_draw:.2f} units")
                     
-                    st.markdown("**Kitna Load kis source se uthaya:**")
+                    st.markdown("**Source-wise load consumption:**")
                     col_x, col_y, col_z = st.columns(3)
                     col_x.metric("☀️ Solar Se", f"{solar_to_load:.2f} units")
                     col_y.metric("⚡ Grid Se", f"{grid_to_load:.2f} units")
