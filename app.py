@@ -863,12 +863,11 @@ if df is not None:
         
         st.markdown("### 🔌 Battery Charging Source")
         
-        col_charge1, col_charge2, col_charge3 = st.columns(3)
+        col_charge1, col_charge2
         col_charge1.metric("☀️ Solar Charging Time", f"{int(solar_charge_time)}h {int((solar_charge_time % 1) * 60)}m")
         col_charge2.metric("⚡ Grid Charging Time", f"{int(grid_charge_time)}h {int((grid_charge_time % 1) * 60)}m")
         
         total_charge_records = len(solar_charge_records) + len(grid_charge_records) + len(other_charge_records)
-        col_charge3.metric("📊 Total Charging Records", f"{total_charge_records}")
         
         charge_mode_data = pd.DataFrame({
             'Source': ['☀️ Solar', '⚡ Grid', '❓ Other'],
@@ -938,8 +937,21 @@ if df is not None:
     else:
         st.warning("Battery voltage column not found")
 
+    with st.expander("🔋 Battery Charging Timeline"):
+        all_charge_records = day_df_charge[day_df_charge['charging_source'].isin(['solar_charging', 'grid_charging', 'other_charging'])]
+        if len(all_charge_records) > 0:
+            st.write(f"**Total Charging Records:** {len(all_charge_records)}")
+            st.write(f"**Solar Charging:** {len(solar_charge_records)} records")
+            st.write(f"**Grid Charging:** {len(grid_charge_records)} records")
+            
+            charge_timeline = all_charge_records[[datetime_col, battery_voltage_col, 'charging_source']].copy()
+            charge_timeline['Time'] = charge_timeline[datetime_col].dt.strftime('%H:%M')
+            st.dataframe(charge_timeline[['Time', battery_voltage_col, 'charging_source']], use_container_width=True)
+        else:
+            st.info("No battery charging detected")
+
     # ===== DUAL SUPPLY ANALYSIS - Solar + Grid Load Distribution =====
-    st.subheader("⚡⚡ Dual Supply Analysis - Load Distribution")
+    st.subheader("⚡ Dual Supply Analysis - Load Distribution")
     
     day_df_timeline = day_df.sort_values(datetime_col).reset_index(drop=True)
     day_df_dual = day_df_timeline.copy()
