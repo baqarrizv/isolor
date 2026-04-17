@@ -1062,8 +1062,15 @@ if df is not None:
                 grid_to_load = min(grid_draw, remaining_load)
                 battery_to_load = remaining_load - grid_to_load
                 
-                solar_excess = max(0, solar_gen - load)
-                grid_to_battery = max(0, grid_draw - grid_to_load)
+                period_start = p['start']
+                period_end = p['end']
+                
+                period_charge = day_df_charge[(day_df_charge[datetime_col] >= period_start) & (day_df_charge[datetime_col] <= period_end)]
+                solar_charge_in_period = period_charge[period_charge['charging_source'] == 'solar_charging']
+                grid_charge_in_period = period_charge[period_charge['charging_source'] == 'grid_charging']
+                
+                solar_excess = solar_charge_in_period['pv_input_power_1'].sum() * time_per_row_hours / 1000 if len(solar_charge_in_period) > 0 else max(0, solar_gen - load)
+                grid_to_battery = grid_charge_in_period['grid_power_input_active_total'].sum() * time_per_row_hours / 1000 if len(grid_charge_in_period) > 0 else max(0, grid_draw - grid_to_load)
                 
                 chart_data.append({
                     'Period': f"P{i+1}",
