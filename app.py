@@ -807,6 +807,137 @@ if df is not None:
     col2.metric("⚡ Grid Time", f"{int(grid_time_hours)}h {int((grid_time_hours % 1) * 60)}m")
     col3.metric("🔋 Battery Time", f"{int(battery_time_hours)}h {int((battery_time_hours % 1) * 60)}m")
 
+    # ===== BATTERY CHARGING ANALYSIS - Solar vs Grid =====
+    st.subheader("🔋 Battery Charging Analysis - Voltages Used for Charging")
+    
+    day_df_charge = day_df.sort_values(datetime_col).reset_index(drop=True).copy()
+    
+    charging_current_col = None
+    for col in day_df_charge.columns:
+        if 'charging_current' in col.lower():
+            charging_current_col = col
+            break
+    
+    battery_voltage_col = None
+    for col in day_df_charge.columns:
+        if 'battery_voltage' in col.lower():
+            battery_voltage_col = col
+            break
+    
+    if battery_voltage_col:
+        day_df_charge['battery_voltage_diff'] = day_df_charge[battery_voltage_col].diff()
+        
+        def classify_charging_source(row):
+            solar = row.get('pv_input_power_1', 0) or 0
+            grid = row.get('grid_power_input_active_total', 0) or 0
+            voltage_diff = row.get('battery_voltage_diff', 0) or 0
+            
+            if charging_current_col:
+                charging_current = row.get(charging_current_col, 0) or 0
+                if charging_current > 0 and solar > 0:
+                    return 'solar_charging'
+                elif charging_current > 0 and grid > 0:
+                    return 'grid_charging'
+                elif charging_current > 0 and solar == 0 and grid == 0:
+                    return 'other_charging'
+                else:
+                    return 'not_charging'
+            else:
+                if voltage_diff > 0.1 and solar > 0:
+                    return 'solar_charging'
+                elif voltage_diff > 0.1 and grid > 0:
+                    return 'grid_charging'
+                elif voltage_diff > 0.1:
+                    return 'other_charging'
+                else:
+                    return 'not_charging'
+        
+        day_df_charge['charging_source'] = day_df_charge.apply(classify_charging_source, axis=1)
+        
+        solar_charge_records = day_df_charge[day_df_charge['charging_source'] == 'solar_charging']
+        grid_charge_records = day_df_charge[day_df_charge['charging_source'] == 'grid_charging']
+        other_charge_records = day_df_charge[day_df_charge['charging_source'] == 'other_charging']
+        
+        solar_charge_time = len(solar_charge_records) * time_per_row_hours
+        grid_charge_time = len(grid_charge_records) * time_per_row_hours
+        
+        st.markdown("### 🔌 Battery Charging Source")
+        
+        col_charge1, col_charge2, col_charge3 = st.columns(3)
+        col_charge1.metric("☀️ Solar Charging Time", f"{int(solar_charge_time)}h {int((solar_charge_time % 1) * 60)}m")
+        col_charge2.metric("⚡ Grid Charging Time", f"{int(grid_charge_time)}h {int((grid_charge_time % 1) * 60)}m")
+        
+        total_charge_records = len(solar_charge_records) + len(grid_charge_records) + len(other_charge_records)
+        col_charge3.metric("📊 Total Charging Records", f"{total_charge_records}")
+        
+        charge_mode_data = pd.DataFrame({
+            'Source': ['☀️ Solar', '⚡ Grid', '❓ Other'],
+            'Hours': [solar_charge_time, grid_charge_time, len(other_charge_records) * time_per_row_hours],
+            'Records': [len(solar_charge_records), len(grid_charge_records), len(other_charge_records)]
+        })
+        
+        fig_charge_mode = px.bar(
+            charge_mode_data, x='Source', y='Hours', 
+            title="🔋 Battery Charging Time by Source",
+            color='Source',
+            color_discrete_map={'☀️ Solar': '#FFD700', '⚡ Grid': '#1E90FF', '❓ Other': '#888888'}
+        )
+        fig_charge_mode.update_layout(yaxis_title="Hours")
+        st.plotly_chart(fig_charge_mode, use_container_width=True, config={
+            'responsive': True,
+            'displayModeBar': True,
+            'modeBarButtonsToRemove': ['lasso2d', 'select2d']
+        })
+        
+        if len(solar_charge_records) > 0 or len(grid_charge_records) > 0:
+            if len(solar_charge_records) > 0:
+                solar_charge_kwh = solar_charge_records['pv_input_power_1'].sum() * time_per_row_hours / 1000
+            else:
+                solar_charge_kwh = 0
+                
+            if len(grid_charge_records) > 0:
+                grid_charge_kwh = grid_charge_records['grid_power_input_active_total'].sum() * time_per_row_hours / 1000
+            else:
+                grid_charge_kwh = 0
+            
+            st.markdown("### ⚡ Energy Used for Battery Charging")
+            
+            col_en1, col_en2 = st.columns(2)
+            col_en1.metric("☀️ Solar Energy to Battery", f"{solar_charge_kwh:.2f} kWh")
+            col_en2.metric("⚡ Grid Energy to Battery", f"{grid_charge_kwh:.2f} kWh")
+            
+            charge_energy_data = pd.DataFrame({
+                'Source': ['☀️ Solar', '⚡ Grid'],
+                'Energy (kWh)': [solar_charge_kwh, grid_charge_kwh]
+            })
+            
+            fig_charge_energy = px.pie(
+                charge_energy_data, values='Energy (kWh)', names='Source',
+                title="Battery Charging Energy Distribution",
+                color_discrete_sequence=['#FFD700', '#1E90FF']
+            )
+            fig_charge_energy.update_traces(textposition='inside', textinfo='percent+label')
+            st.plotly_chart(fig_charge_energy, use_container_width=True, config={
+                'responsive': True,
+                'displayModeBar': True,
+                'modeBarButtonsToRemove': ['lasso2d', 'select2d']
+            })
+        
+        with st.expander("🔋 Battery Charging Timeline"):
+            all_charge_records = day_df_charge[day_df_charge['charging_source'].isin(['solar_charging', 'grid_charging', 'other_charging'])]
+            if len(all_charge_records) > 0:
+                st.write(f"**Total Charging Records:** {len(all_charge_records)}")
+                st.write(f"**Solar Charging:** {len(solar_charge_records)} records")
+                st.write(f"**Grid Charging:** {len(grid_charge_records)} records")
+                
+                charge_timeline = all_charge_records[[datetime_col, battery_voltage_col, 'charging_source']].copy()
+                charge_timeline['Time'] = charge_timeline[datetime_col].dt.strftime('%H:%M')
+                st.dataframe(charge_timeline[['Time', battery_voltage_col, 'charging_source']], use_container_width=True)
+            else:
+                st.info("No battery charging detected")
+    else:
+        st.warning("Battery voltage column not found")
+
     # ===== DUAL SUPPLY ANALYSIS - Solar + Grid Load Distribution =====
     st.subheader("⚡⚡ Dual Supply Analysis - Load Distribution")
     
@@ -962,7 +1093,7 @@ if df is not None:
             fig_dual = px.bar(
                 df_chart, x='Period', 
                 y=['☀️ Solar Load', '⚡ Grid Load', '🔋 Battery Load'],
-                title="⚡⚡ Dual Supply: Load Distribution by Source (Units)",
+                title="⚡Dual Supply: Load Distribution by Source (Units)",
                 barmode='stack',
                 color_discrete_map={
                     '☀️ Solar Load': '#FFD700',
