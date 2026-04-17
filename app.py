@@ -863,11 +863,12 @@ if df is not None:
         
         st.markdown("### 🔌 Battery Charging Source")
         
-        col_charge1, col_charge2
+        col_charge1, col_charge2, col_charge3 = st.columns(3)
         col_charge1.metric("☀️ Solar Charging Time", f"{int(solar_charge_time)}h {int((solar_charge_time % 1) * 60)}m")
         col_charge2.metric("⚡ Grid Charging Time", f"{int(grid_charge_time)}h {int((grid_charge_time % 1) * 60)}m")
         
         total_charge_records = len(solar_charge_records) + len(grid_charge_records) + len(other_charge_records)
+        col_charge3.metric("📊 Total Charging Records", f"{total_charge_records}")
         
         charge_mode_data = pd.DataFrame({
             'Source': ['☀️ Solar', '⚡ Grid', '❓ Other'],
