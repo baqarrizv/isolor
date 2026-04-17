@@ -5,6 +5,102 @@ import plotly.express as px
 import requests
 import os
 from io import BytesIO
+import hashlib
+
+@st.cache_data(ttl=3600)
+def load_google_sheet(url):
+    response = requests.get(url)
+    response.raise_for_status()
+    df = pd.read_excel(BytesIO(response.content))
+    return df
+
+@st.cache_data(ttl=3600)
+def load_local_or_upload(file):
+    if hasattr(file, 'read'):
+        return pd.read_excel(file)
+    elif os.path.exists(file):
+        return pd.read_excel(file)
+    return None
+
+@st.cache_data
+def process_raw_data(_df):
+    df = _df.copy()
+    df.columns = [col.strip().lower().replace(" ", "_") for col in df.columns]
+    
+    datetime_col = [col for col in df.columns if "time" in col or "date" in col][0]
+    load_col = [col for col in df.columns if "load" in col][0]
+    voltage_col = [col for col in df.columns if "volt" in col][0]
+    mode_col = [col for col in df.columns if "mode" in col or "status" in col][0]
+    
+    df[datetime_col] = pd.to_datetime(df[datetime_col], errors='coerce')
+    df["date"] = df[datetime_col].dt.date
+    df["hour"] = df[datetime_col].dt.hour
+    
+    return df, datetime_col, load_col, voltage_col, mode_col
+
+@st.cache_data
+def calculate_daily_energy_cached(_df, _datetime_col, _calc_method):
+    df_calc = _df.copy()
+    df_calc = df_calc.fillna(0)
+    
+    if _calc_method == "Fixed 5 Minutes":
+        time_per_row_hours = 5 / 60
+    else:
+        df_calc = df_calc.sort_values(_datetime_col)
+        time_diffs = df_calc[_datetime_col].diff().dropna()
+        if len(time_diffs) > 0:
+            avg_minutes = time_diffs.mean().total_seconds() / 60
+            time_per_row_hours = avg_minutes / 60
+        else:
+            time_per_row_hours = 5 / 60
+    
+    df_calc['solar_kwh'] = df_calc['pv_input_power_1'] * time_per_row_hours / 1000
+    df_calc['utility_kwh'] = df_calc['grid_power_input_active_total'] * time_per_row_hours / 1000
+    df_calc['load_kwh'] = df_calc['ac_output_active_power_total'] * time_per_row_hours / 1000
+    
+    battery_condition = (
+        (df_calc['pv_input_power_1'] == 0) & 
+        (df_calc['grid_power_input_active_total'] == 0) & 
+        (df_calc['ac_output_active_power_total'] > 0)
+    )
+    df_calc['battery_kwh'] = 0.0
+    df_calc.loc[battery_condition, 'battery_kwh'] = df_calc.loc[battery_condition, 'ac_output_active_power_total'] * time_per_row_hours / 1000
+    
+    daily = df_calc.groupby('date').agg({
+        'solar_kwh': 'sum',
+        'utility_kwh': 'sum', 
+        'load_kwh': 'sum',
+        'battery_kwh': 'sum'
+    }).reset_index()
+    
+    record_counts = df_calc.groupby('date').size().reset_index(name='total_records')
+    daily = daily.merge(record_counts, on='date')
+    
+    return daily, time_per_row_hours
+
+@st.cache_data
+def get_filtered_day(_df, _selected_date, _datetime_col):
+    return _df[_df["date"] == _selected_date].sort_values(_datetime_col).reset_index(drop=True)
+
+@st.cache_data
+def get_mode_records(_day_df, _datetime_col):
+    day_df_copy = _day_df.copy()
+    day_df_copy = day_df_copy.sort_values(_datetime_col).reset_index(drop=True)
+    return day_df_copy
+
+@st.cache_data
+def calculate_mode_times(_day_df, _time_per_row_hours):
+    grid_records = _day_df[_day_df['grid_power_input_active_total'] > 0]
+    solar_records = _day_df[(_day_df['grid_power_input_active_total'] == 0) & (_day_df['pv_input_power_1'] > 0)]
+    battery_records = _day_df[(_day_df['grid_power_input_active_total'] == 0) & 
+                             (_day_df['pv_input_power_1'] == 0) & 
+                             (_day_df['ac_output_active_power_total'] > 0)]
+    
+    grid_time_hours = len(grid_records) * _time_per_row_hours
+    solar_time_hours = len(solar_records) * _time_per_row_hours
+    battery_time_hours = len(battery_records) * _time_per_row_hours
+    
+    return grid_records, solar_records, battery_records, grid_time_hours, solar_time_hours, battery_time_hours
 
 # Mobile-friendly page config
 st.set_page_config(
@@ -107,7 +203,6 @@ with st.expander("📊 Data Source", expanded=False):
     DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTy3qIf4XMXKwCzy4jhWksU5wm3KqYeqvFWVSusIehRxvn783TJwoBljQdkYiE5wETGaIsY_rSGl0P3/pub?output=xlsx"
 
     if data_source == "🔗 Google Sheet Link":
-        # Google Sheet option - use hardcoded URL by default
         use_custom_sheet = st.checkbox("Use different Google Sheet", value=False)
         
         if use_custom_sheet:
@@ -118,12 +213,7 @@ with st.expander("📊 Data Source", expanded=False):
             st.info(f"📋 Using default Google Sheet")
         
         try:
-            # Fetch the sheet
-            response = requests.get(sheet_url)
-            response.raise_for_status()
-            
-            # Read Excel from response
-            df = pd.read_excel(BytesIO(response.content))
+            df = load_google_sheet(sheet_url)
             st.success("Google Sheet Loaded Successfully ✅")
             
         except Exception as e:
@@ -150,35 +240,15 @@ with st.expander("📊 Data Source", expanded=False):
                 except Exception as e:
                     st.warning(f"Could not load local file: {e}")
 
-# Rest of the code remains the same
 if df is not None:
-    # Normalize column names
-    df.columns = [col.strip().lower().replace(" ", "_") for col in df.columns]
+    df, datetime_col, load_col, voltage_col, mode_col = process_raw_data(df)
 
-    # Try to detect columns with error handling
-    try:
-        datetime_col = [col for col in df.columns if "time" in col or "date" in col][0]
-        load_col = [col for col in df.columns if "load" in col][0]
-        voltage_col = [col for col in df.columns if "volt" in col][0]
-        mode_col = [col for col in df.columns if "mode" in col or "status" in col][0]
-    except IndexError:
-        st.error("⚠️ Could not detect required columns. Please ensure your Excel file has columns containing: time/date, load, voltage, mode/status.")
-        st.write("**Detected columns:**", df.columns.tolist())
-        st.stop()
-
-    df[datetime_col] = pd.to_datetime(df[datetime_col], errors='coerce')
-
-    # Check for invalid datetime values
     if df[datetime_col].isna().all():
         st.error("⚠️ Could not parse datetime column. Please check your data format.")
         st.stop()
 
-    df["date"] = df[datetime_col].dt.date
-    df["hour"] = df[datetime_col].dt.hour
-
     st.success("File Loaded Successfully ✅")
     
-    # ===== DATE FILTER (MUST BE BEFORE SIDEBAR) =====
     date_options = sorted(df["date"].unique(), reverse=True)
     if len(date_options) == 0:
         st.error("⚠️ No valid dates found in the data.")
@@ -197,65 +267,24 @@ if df is not None:
     # Second: Select Date
     selected_date = st.sidebar.selectbox("Select Date", date_options)
     
-    # Energy calculation function
-    def calculate_daily_energy(df, datetime_col, calc_method):
-        df_calc = df.copy()
-        df_calc = df_calc.fillna(0)
-        
-        if calc_method == "Fixed 5 Minutes":
-            time_per_row_hours = 5 / 60  # 0.0833 hours
-            st.sidebar.write(f"**Debug:** Each row = 5 minutes = {time_per_row_hours:.4f} hours")
+    daily_energy, time_per_row_hours = calculate_daily_energy_cached(df, datetime_col, calc_method)
+    
+    if calc_method == "Fixed 5 Minutes":
+        st.sidebar.write(f"**Debug:** Each row = 5 minutes = {time_per_row_hours:.4f} hours")
+    else:
+        df_sorted = df.sort_values(datetime_col)
+        time_diffs = df_sorted[datetime_col].diff().dropna()
+        if len(time_diffs) > 0:
+            avg_minutes = time_diffs.mean().total_seconds() / 60
+            st.sidebar.write(f"**Debug:** Auto-detected avg interval = {avg_minutes:.2f} min = {time_per_row_hours:.4f} hours")
         else:
-            df_calc = df_calc.sort_values(datetime_col)
-            time_diffs = df_calc[datetime_col].diff().dropna()
-            
-            if len(time_diffs) > 0:
-                avg_minutes = time_diffs.mean().total_seconds() / 60
-                time_per_row_hours = avg_minutes / 60
-                st.sidebar.write(f"**Debug:** Auto-detected avg interval = {avg_minutes:.2f} min = {time_per_row_hours:.4f} hours")
-            else:
-                time_per_row_hours = 5 / 60
-                st.sidebar.write(f"**Debug:** Could not detect, using fallback = 5 min = {time_per_row_hours:.4f} hours")
-        
-        # Energy (kWh) = Power (W) × time_per_row_hours / 1000
-        df_calc['solar_kwh'] = df_calc['pv_input_power_1'] * time_per_row_hours / 1000
-        df_calc['utility_kwh'] = df_calc['grid_power_input_active_total'] * time_per_row_hours / 1000
-        df_calc['load_kwh'] = df_calc['ac_output_active_power_total'] * time_per_row_hours / 1000
-        
-        # Battery energy calculation:
-        # When pv_input_power_1 = 0 AND grid_power_input_active_total = 0 AND ac_output_active_power_total > 0
-        # Then load is running from battery
-        df_calc['battery_kwh'] = 0.0
-        battery_condition = (
-            (df_calc['pv_input_power_1'] == 0) & 
-            (df_calc['grid_power_input_active_total'] == 0) & 
-            (df_calc['ac_output_active_power_total'] > 0)
-        )
-        df_calc.loc[battery_condition, 'battery_kwh'] = df_calc.loc[battery_condition, 'ac_output_active_power_total'] * time_per_row_hours / 1000
-        
-        total_solar_power = df_calc['pv_input_power_1'].sum()
-        total_solar_kwh = df_calc['solar_kwh'].sum()
-        
-        st.sidebar.write(f"**Raw Solar Power Sum:** {total_solar_power} W")
-        st.sidebar.write(f"**Solar kWh ({calc_method}):** {total_solar_kwh:.2f} kWh")
-        st.sidebar.write(f"**Calculation:** {total_solar_power} × {time_per_row_hours:.4f} / 1000 = {total_solar_kwh:.2f} kWh")
-        
-        # Group by date
-        daily = df_calc.groupby('date').agg({
-            'solar_kwh': 'sum',
-            'utility_kwh': 'sum', 
-            'load_kwh': 'sum',
-            'battery_kwh': 'sum'
-        }).reset_index()
-        
-        # Count records per day
-        record_counts = df_calc.groupby('date').size().reset_index(name='total_records')
-        daily = daily.merge(record_counts, on='date')
-        
-        return daily
-
-    # Calculate daily energy
-    daily_energy = calculate_daily_energy(df, datetime_col, calc_method)
+            st.sidebar.write(f"**Debug:** Could not detect, using fallback = 5 min = {time_per_row_hours:.4f} hours")
+    
+    total_solar_power = df['pv_input_power_1'].sum()
+    total_solar_kwh = daily_energy[daily_energy['date'] == daily_energy['date'].max()]['solar_kwh'].values[0] if len(daily_energy) > 0 else 0
+    st.sidebar.write(f"**Raw Solar Power Sum:** {total_solar_power} W")
+    st.sidebar.write(f"**Solar kWh ({calc_method}):** {total_solar_kwh:.2f} kWh")
+    st.sidebar.write(f"**Calculation:** {total_solar_power} × {time_per_row_hours:.4f} / 1000 = {total_solar_kwh:.2f} kWh")
     
     # Format the dataframe for better display
     daily_display = daily_energy.copy()
@@ -488,16 +517,13 @@ if df is not None:
             load_hover += f"<b>Work Mode</b>: %{{customdata[{len(display_cols_load)}]}}<br>"
         load_hover += f"<b>Time</b>: %{{x}}"
         
-        # Prepare customdata
         load_customdata = []
-        for _, row in day_df_sorted_load.iterrows():
-            row_data = []
-            for col in display_cols_load:
-                val = row[col] if pd.notna(row[col]) else 0
-                row_data.append(f"{val:.2f}")
-            if work_mode_col_load:
-                row_data.append(str(row[work_mode_col_load]))
-            load_customdata.append(tuple(row_data))
+        for col in display_cols_load:
+            col_data = day_df_sorted_load[col].fillna(0).values
+            load_customdata.append([f"{val:.2f}" for val in col_data])
+        if work_mode_col_load:
+            load_customdata.append([str(v) for v in day_df_sorted_load[work_mode_col_load].values])
+        load_customdata = list(zip(*load_customdata))
         
         fig_load.update_traces(hovertemplate=load_hover, customdata=load_customdata)
         fig_load.update_layout(hovermode='closest', hoverdistance=-1)
@@ -599,16 +625,13 @@ if df is not None:
         voltage_hover += f"<b>Work Mode</b>: %{{customdata[{len(hover_cols_for_voltage)}]}}<br>"
     voltage_hover += f"<b>Time</b>: %{{x}}"
     
-    # Prepare customdata
     voltage_customdata = []
-    for _, row in day_df_sorted.iterrows():
-        row_data = []
-        for col in hover_cols_for_voltage:
-            val = row[col] if pd.notna(row[col]) else 0
-            row_data.append(f"{val:.2f}")
-        if work_mode_col:
-            row_data.append(str(row[work_mode_col]))
-        voltage_customdata.append(tuple(row_data))
+    for col in hover_cols_for_voltage:
+        col_data = day_df_sorted[col].fillna(0).values
+        voltage_customdata.append([f"{val:.2f}" for val in col_data])
+    if work_mode_col:
+        voltage_customdata.append([str(v) for v in day_df_sorted[work_mode_col].values])
+    voltage_customdata = list(zip(*voltage_customdata))
     
     fig_voltage.update_traces(hovertemplate=voltage_hover, customdata=voltage_customdata)
     fig_voltage.update_layout(hovermode='closest', hoverdistance=-1)
@@ -652,16 +675,13 @@ if df is not None:
             battery_hover += f"<b>Work Mode</b>: %{{customdata[{len(hover_cols_for_battery)}]}}<br>"
         battery_hover += f"<b>Time</b>: %{{x}}"
         
-        # Prepare customdata
         battery_customdata = []
-        for _, row in day_df_sorted.iterrows():
-            row_data = []
-            for col in hover_cols_for_battery:
-                val = row[col] if pd.notna(row[col]) else 0
-                row_data.append(f"{val:.2f}")
-            if work_mode_col:
-                row_data.append(str(row[work_mode_col]))
-            battery_customdata.append(tuple(row_data))
+        for col in hover_cols_for_battery:
+            col_data = day_df_sorted[col].fillna(0).values
+            battery_customdata.append([f"{val:.2f}" for val in col_data])
+        if work_mode_col:
+            battery_customdata.append([str(v) for v in day_df_sorted[work_mode_col].values])
+        battery_customdata = list(zip(*battery_customdata))
         
         fig_battery.update_traces(hovertemplate=battery_hover, customdata=battery_customdata)
         fig_battery.update_layout(hovermode='closest', hoverdistance=-1)
@@ -709,16 +729,13 @@ if df is not None:
         ac_hover += f"<b>Work Mode</b>: %{{customdata[{len(hover_cols_for_ac)}]}}<br>"
     ac_hover += f"<b>Time</b>: %{{x}}"
     
-    # Prepare customdata
     ac_customdata = []
-    for _, row in day_df_sorted.iterrows():
-        row_data = []
-        for col in hover_cols_for_ac:
-            val = row[col] if pd.notna(row[col]) else 0
-            row_data.append(f"{val:.2f}")
-        if work_mode_col:
-            row_data.append(str(row[work_mode_col]))
-        ac_customdata.append(tuple(row_data))
+    for col in hover_cols_for_ac:
+        col_data = day_df_sorted[col].fillna(0).values
+        ac_customdata.append([f"{val:.2f}" for val in col_data])
+    if work_mode_col:
+        ac_customdata.append([str(v) for v in day_df_sorted[work_mode_col].values])
+    ac_customdata = list(zip(*ac_customdata))
     
     fig_main.update_traces(hovertemplate=ac_hover, customdata=ac_customdata)
     fig_main.update_layout(hovermode='closest', hoverdistance=-1)
@@ -827,32 +844,33 @@ if df is not None:
     if battery_voltage_col:
         day_df_charge['battery_voltage_diff'] = day_df_charge[battery_voltage_col].diff()
         
-        def classify_charging_source(row):
-            solar = row.get('pv_input_power_1', 0) or 0
-            grid = row.get('grid_power_input_active_total', 0) or 0
-            voltage_diff = row.get('battery_voltage_diff', 0) or 0
+        
+        
+        def classify_charging_source_vectorized(day_df_charge, charging_current_col):
+            solar = day_df_charge['pv_input_power_1'].fillna(0)
+            grid = day_df_charge['grid_power_input_active_total'].fillna(0)
+            voltage_diff = day_df_charge['battery_voltage_diff'].fillna(0)
             
             if charging_current_col:
-                charging_current = row.get(charging_current_col, 0) or 0
-                if charging_current > 0 and solar > 0:
-                    return 'solar_charging'
-                elif charging_current > 0 and grid > 0:
-                    return 'grid_charging'
-                elif charging_current > 0 and solar == 0 and grid == 0:
-                    return 'other_charging'
-                else:
-                    return 'not_charging'
+                charging_current = day_df_charge[charging_current_col].fillna(0)
+                conditions = [
+                    (charging_current > 0) & (solar > 0),
+                    (charging_current > 0) & (grid > 0),
+                    (charging_current > 0) & (solar == 0) & (grid == 0)
+                ]
+                choices = ['solar_charging', 'grid_charging', 'other_charging']
             else:
-                if voltage_diff > 0.1 and solar > 0:
-                    return 'solar_charging'
-                elif voltage_diff > 0.1 and grid > 0:
-                    return 'grid_charging'
-                elif voltage_diff > 0.1:
-                    return 'other_charging'
-                else:
-                    return 'not_charging'
+                conditions = [
+                    (voltage_diff > 0.1) & (solar > 0),
+                    (voltage_diff > 0.1) & (grid > 0),
+                    (voltage_diff > 0.1)
+                ]
+                choices = ['solar_charging', 'grid_charging', 'other_charging']
+            
+            day_df_charge['charging_source'] = np.select(conditions, choices, default='not_charging')
+            return day_df_charge
         
-        day_df_charge['charging_source'] = day_df_charge.apply(classify_charging_source, axis=1)
+        day_df_charge = classify_charging_source_vectorized(day_df_charge, charging_current_col)
         
         solar_charge_records = day_df_charge[day_df_charge['charging_source'] == 'solar_charging']
         grid_charge_records = day_df_charge[day_df_charge['charging_source'] == 'grid_charging']
@@ -939,25 +957,19 @@ if df is not None:
     def format_time(dt):
         return dt.strftime('%H:%M')
     
-    def classify_power_source(row):
-        solar = row.get('pv_input_power_1', 0) or 0
-        grid = row.get('grid_power_input_active_total', 0) or 0
-        load = row.get('ac_output_active_power_total', 0) or 0
-        
-        if load == 0:
-            return 'idle'
-        elif solar > 0 and grid > 0:
-            return 'solar_grid'
-        elif solar > 0 and grid == 0:
-            return 'solar_only'
-        elif grid > 0 and solar == 0:
-            return 'grid_only'
-        elif solar == 0 and grid == 0 and load > 0:
-            return 'battery_only'
-        else:
-            return 'other'
+    solar = day_df_dual['pv_input_power_1'].fillna(0)
+    grid = day_df_dual['grid_power_input_active_total'].fillna(0)
+    load = day_df_dual['ac_output_active_power_total'].fillna(0)
     
-    day_df_dual['power_source'] = day_df_dual.apply(classify_power_source, axis=1)
+    conditions = [
+        load == 0,
+        (solar > 0) & (grid > 0),
+        (solar > 0) & (grid == 0),
+        (grid > 0) & (solar == 0),
+        (solar == 0) & (grid == 0) & (load > 0)
+    ]
+    choices = ['idle', 'solar_grid', 'solar_only', 'grid_only', 'battery_only']
+    day_df_dual['power_source'] = np.select(conditions, choices, default='other')
     
     dual_records = day_df_dual[day_df_dual['power_source'] == 'solar_grid']
     solar_only_records = day_df_dual[day_df_dual['power_source'] == 'solar_only']
