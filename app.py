@@ -1110,20 +1110,20 @@ if df is not None:
                 'responsive': True,
                 'displayModeBar': True,
                 'modeBarButtonsToRemove': ['lasso2d', 'select2d']
-            })
+})
             
-             with st.expander("🔋 Battery Charging Timeline"):
-            all_charge_records = day_df_charge[day_df_charge['charging_source'].isin(['solar_charging', 'grid_charging', 'other_charging'])]
-            if len(all_charge_records) > 0:
-                st.write(f"**Total Charging Records:** {len(all_charge_records)}")
-                st.write(f"**Solar Charging:** {len(solar_charge_records)} records")
-                st.write(f"**Grid Charging:** {len(grid_charge_records)} records")
-                
-                charge_timeline = all_charge_records[[datetime_col, battery_voltage_col, 'charging_source']].copy()
-                charge_timeline['Time'] = charge_timeline[datetime_col].dt.strftime('%H:%M')
-                st.dataframe(charge_timeline[['Time', battery_voltage_col, 'charging_source']], use_container_width=True)
-            else:
-                st.info("No battery charging detected")
+            with st.expander("🔋 Battery Charging Timeline"):
+                all_charge_records = day_df_charge[day_df_charge['charging_source'].isin(['solar_charging', 'grid_charging', 'other_charging'])]
+                if len(all_charge_records) > 0:
+                    st.write(f"**Total Charging Records:** {len(all_charge_records)}")
+                    st.write(f"**Solar Charging:** {len(solar_charge_records)} records")
+                    st.write(f"**Grid Charging:** {len(grid_charge_records)} records")
+                    
+                    charge_timeline = all_charge_records[[datetime_col, battery_voltage_col, 'charging_source']].copy()
+                    charge_timeline['Time'] = charge_timeline[datetime_col].dt.strftime('%H:%M')
+                    st.dataframe(charge_timeline[['Time', battery_voltage_col, 'charging_source']], use_container_width=True)
+                else:
+                    st.info("No battery charging detected")
 
 
             # Dual Supply Periods Detail - AFTER Battery Charging chart
