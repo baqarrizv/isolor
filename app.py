@@ -933,16 +933,16 @@ if df is not None:
                 charge_energy_data, values='Energy (kWh)', names='Source',
                 title="Battery Charging Energy Distribution",
                 color_discrete_sequence=['#FFD700', '#1E90FF']
-            )
-            fig_charge_energy.update_traces(textposition='inside', textinfo='percent+label')
-            st.plotly_chart(fig_charge_energy, use_container_width=True, config={
-                'responsive': True,
-                'displayModeBar': True,
-                'modeBarButtonsToRemove': ['zoom2d', 'pan2d', 'select2d', 'lasso2d'],
-                'scrollZoom': False,
-                'doubleClick': False,
-                'dragmode': False
-            })
+             )
+             fig_charge_energy.update_traces(textposition='inside', textinfo='percent+label')
+             st.plotly_chart(fig_charge_energy, use_container_width=True, config={
+                 'responsive': True,
+                 'displayModeBar': True,
+                 'modeBarButtonsToRemove': ['zoom2d', 'pan2d', 'select2d', 'lasso2d'],
+                 'scrollZoom': False,
+                 'doubleClick': False,
+                 'dragmode': False
+             })
         
         
    
