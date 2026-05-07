@@ -946,11 +946,12 @@ if df is not None:
             hovertemplate=load_hover,
 
             customdata=load_customdata)
-        fig_load.update_layout(hovermode='closest', hoverdistance=-1)
 
-        # Make chart responsive for mobile
+            fig_load.update_layout(hovermode='closest', hoverdistance=-1)
 
-        st.plotly_chart(fig_load, use_container_width=True, config={
+            # Make chart responsive for mobile
+
+            st.plotly_chart(fig_load, use_container_width=True, config={
 
             'responsive': True,
 
@@ -962,13 +963,13 @@ if df is not None:
 
             'doubleClick': False
 
-        })
+            })
 
-        # Find numeric columns - needed for both voltage and power charts
+            # Find numeric columns - needed for both voltage and power charts
 
-        numeric_cols = day_df.select_dtypes(include=[np.number]).columns.tolist()
+            numeric_cols = day_df.select_dtypes(include=[np.number]).columns.tolist()
 
-        numeric_cols = [
+            numeric_cols = [
 
             c for c in numeric_cols if c not in [
 
