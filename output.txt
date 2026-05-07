@@ -1,7 +1,0 @@
-920 (12): '            st.markdown("### ⚡ Energy Used for Battery Charging")\r'
-921 (13): '            \r'
-922 ( 0): 'col_en1, col_en2 = st.columns(2)\r'
-923 (12): '            col_en1.metric("☀️ Solar Energy to Battery", f"{solar_char'
-924 (12): '            col_en2.metric("⚡ Grid Energy to Battery", f"{grid_charge_'
-925 (13): '            \r'
-926 (12): '            charge_energy_data = pd.DataFrame({\r'
