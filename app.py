@@ -312,18 +312,18 @@ if df is not None:
             font_size=14
         ))
         # Update hovertemplate to show formatted values
-        fig_pie.update_traces(
-            hovertemplate='<b>%{label}</b><br>%{percent}<br>%{value:.2f} kWh', 
-            texttemplate='<b>%{label}</b><br>%{value:.2f} kWh<br>%{percent}'
-        )
-        # Make chart responsive for mobile
-st.plotly_chart(fig_pie, use_container_width=True, config={
-    'responsive': True,
-    'displayModeBar': True,
-    'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d'],
-    'scrollZoom': False,
-    'doubleClick': False
-})
+         fig_pie.update_traces(
+             hovertemplate='<b>%{label}</b><br>%{percent}<br>%{value:.2f} kWh', 
+             texttemplate='<b>%{label}</b><br>%{value:.2f} kWh<br>%{percent}'
+         )
+         # Make chart responsive for mobile
+         st.plotly_chart(fig_pie, use_container_width=True, config={
+             'responsive': True,
+             'displayModeBar': True,
+             'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d'],
+             'scrollZoom': False,
+             'doubleClick': False
+         })
     
     # ===== DAILY ENERGY CHART (NO EXPANDER - DIRECT DISPLAY) =====
     # Prepare data for custom hover - show all 4 values for the hovered date
@@ -403,13 +403,13 @@ st.plotly_chart(fig_pie, use_container_width=True, config={
         hoverdistance=15
     )
     # Make chart responsive for mobile
-st.plotly_chart(fig_energy, use_container_width=True, config={
-    'responsive': True,
-    'displayModeBar': True,
-    'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d'],
-    'scrollZoom': False,
-    'doubleClick': False
-})
+    st.plotly_chart(fig_energy, use_container_width=True, config={
+        'responsive': True,
+        'displayModeBar': True,
+        'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d'],
+        'scrollZoom': False,
+        'doubleClick': False
+    })
     
     # ===== ANALYSIS FOR SELECTED DATE (START) =====
     day_df = df[df["date"] == selected_date]
@@ -506,14 +506,14 @@ st.plotly_chart(fig_energy, use_container_width=True, config={
         fig_load.update_traces(hovertemplate=load_hover, customdata=load_customdata)
         fig_load.update_layout(hovermode='closest', hoverdistance=-1)
     
-    # Make chart responsive for mobile
-st.plotly_chart(fig_load, use_container_width=True, config={
-    'responsive': True,
-    'displayModeBar': True,
-    'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d'],
-    'scrollZoom': False,
-    'doubleClick': False
-})
+# Make chart responsive for mobile
+    st.plotly_chart(fig_load, use_container_width=True, config={
+        'responsive': True,
+        'displayModeBar': True,
+        'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d'],
+        'scrollZoom': False,
+        'doubleClick': False
+    })
     
     # Find numeric columns - needed for both voltage and power charts
     numeric_cols = day_df.select_dtypes(include=[np.number]).columns.tolist()
@@ -620,13 +620,13 @@ st.plotly_chart(fig_load, use_container_width=True, config={
     fig_voltage.update_layout(hovermode='closest', hoverdistance=-1)
     
     # Make chart responsive for mobile
-st.plotly_chart(fig_voltage, use_container_width=True, config={
-    'responsive': True,
-    'displayModeBar': True,
-    'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d'],
-    'scrollZoom': False,
-    'doubleClick': False
-})
+    st.plotly_chart(fig_voltage, use_container_width=True, config={
+        'responsive': True,
+        'displayModeBar': True,
+        'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d'],
+        'scrollZoom': False,
+        'doubleClick': False
+    })
     
     # Battery Voltage Graph (DIRECT DISPLAY - NO EXPANDER)
     battery_col = None
@@ -674,14 +674,14 @@ st.plotly_chart(fig_voltage, use_container_width=True, config={
         fig_battery.update_traces(hovertemplate=battery_hover, customdata=battery_customdata)
         fig_battery.update_layout(hovermode='closest', hoverdistance=-1)
         
-        # Make chart responsive for mobile
-st.plotly_chart(fig_battery, use_container_width=True, config={
-    'responsive': True,
-    'displayModeBar': True,
-    'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d'],
-    'scrollZoom': False,
-    'doubleClick': False
-})
+         # Make chart responsive for mobile
+         st.plotly_chart(fig_battery, use_container_width=True, config={
+             'responsive': True,
+             'displayModeBar': True,
+             'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d'],
+             'scrollZoom': False,
+             'doubleClick': False
+         })
     else:
         st.warning("Battery Voltage column not found")
 
@@ -734,13 +734,13 @@ st.plotly_chart(fig_battery, use_container_width=True, config={
     fig_main.update_layout(hovermode='closest', hoverdistance=-1)
     
     # Make chart responsive for mobile
-st.plotly_chart(fig_main, use_container_width=True, config={
-    'responsive': True,
-    'displayModeBar': True,
-    'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d'],
-    'scrollZoom': False,
-    'doubleClick': False
-})
+    st.plotly_chart(fig_main, use_container_width=True, config={
+        'responsive': True,
+        'displayModeBar': True,
+        'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d'],
+        'scrollZoom': False,
+        'doubleClick': False
+    })
 
     # Solar Mode vs Grid Mode vs Battery Mode - Based on power values (DIRECT DISPLAY - NO EXPANDER)
     # Calculate mode times based on power values
@@ -808,13 +808,13 @@ st.plotly_chart(fig_main, use_container_width=True, config={
         trace.hovertemplate = f'<b>{mode_data["Mode"].iloc[i]}</b><br>Time: {mode_data["Hours_Display"].iloc[i]}<br>Records: {mode_data["Records"].iloc[i]}'
     
     # Make chart responsive for mobile
-st.plotly_chart(fig_mode, use_container_width=True, config={
-    'responsive': True,
-    'displayModeBar': True,
-    'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d'],
-    'scrollZoom': False,
-    'doubleClick': False
-})
+    st.plotly_chart(fig_mode, use_container_width=True, config={
+        'responsive': True,
+        'displayModeBar': True,
+        'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d'],
+        'scrollZoom': False,
+        'doubleClick': False
+    })
     
     col1, col2, col3 = st.columns(3)
     col1.metric("☀️ Solar Time", f"{int(solar_time_hours)}h {int((solar_time_hours % 1) * 60)}m")
