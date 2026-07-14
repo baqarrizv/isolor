@@ -115,6 +115,66 @@ def find_latest_drive_file_in_folder_page(folder_url):
     except Exception:
         return None, None
 
+
+def find_all_drive_files_in_folder_page(folder_url):
+    try:
+        resp = requests.get(folder_url)
+        resp.raise_for_status()
+        html = resp.text
+        candidates = []
+
+        # JSON-like entries
+        for m in re.finditer(r'"id":"([a-zA-Z0-9_-]{25,})".*?"title":"([^\"]+?\.(?:xlsx|xls))"', html, re.DOTALL):
+            candidates.append((m.group(1), m.group(2)))
+        for m in re.finditer(r'"id":"([a-zA-Z0-9_-]{25,})".*?"name":"([^\"]+?\.(?:xlsx|xls))"', html, re.DOTALL):
+            candidates.append((m.group(1), m.group(2)))
+
+        # direct /d/ links with filenames
+        for m in re.finditer(r'/d/([a-zA-Z0-9_-]{25,}).{0,200}?([A-Za-z0-9_\-\.]+?\.(?:xlsx|xls))', html):
+            candidates.append((m.group(1), m.group(2)))
+
+        # filenames + nearby ids
+        for m in re.finditer(r'([A-Za-z0-9_\-\.]+?\.(?:xlsx|xls))', html):
+            filename = m.group(1)
+            start = max(0, m.start() - 1200)
+            end = min(len(html), m.end() + 1200)
+            chunk = html[start:end]
+            id_match = re.search(r'/d/([a-zA-Z0-9_-]{25,})', chunk)
+            if id_match:
+                candidates.append((id_match.group(1), filename))
+
+        # fallback id-only captures
+        if not candidates:
+            file_ids = re.findall(r'/d/([a-zA-Z0-9_-]{25,})', html)
+            for fid in file_ids:
+                candidates.append((fid, fid))
+            file_ids = re.findall(r'[?&]id=([a-zA-Z0-9_-]{25,})', html)
+            for fid in file_ids:
+                candidates.append((fid, fid))
+
+        # dedupe preserving order
+        seen = set()
+        unique = []
+        for fid, name in candidates:
+            if fid not in seen:
+                seen.add(fid)
+                unique.append((fid, name))
+        return unique
+    except Exception:
+        return []
+
+
+def delete_drive_file_with_service_account(sa_path, file_id):
+    try:
+        from googleapiclient.discovery import build
+        from google.oauth2 import service_account
+        creds = service_account.Credentials.from_service_account_file(sa_path, scopes=['https://www.googleapis.com/auth/drive'])
+        service = build('drive', 'v3', credentials=creds, cache_discovery=False)
+        service.files().delete(fileId=file_id).execute()
+        return True, None
+    except Exception as e:
+        return False, str(e)
+
 # Mobile-friendly page config
 st.set_page_config(
     page_title="Inverter Analytics",
@@ -243,32 +303,29 @@ with st.expander("📊 Data Source", expanded=False):
         folder_url = st.text_input("📁 Drive Folder URL (optional)", value="https://drive.google.com/drive/folders/1dazVdDTcKTehgIe36jmP2uqNqkqAYPw5")
         drive_file = st.text_input("Enter Drive file URL, file id or filename (e.g. 17840308811634.xlsx)")
         st.caption("Leave the file field blank to load the latest .xlsx/.xls file from the shared folder.")
-
+        # If the user provided a specific file/url/id and clicked Fetch, try that first
         if st.button("Fetch from Drive"):
             try:
                 df = None
                 file_id = None
                 filename = None
-                latest_file_info = None
 
-                # If the user provided a full Drive file URL or file id, parse the id
                 file_id = get_drive_file_id_from_string(drive_file)
 
-                # If the user provided a filename, keep it for lookup
                 if file_id is None and drive_file:
                     if drive_file.lower().endswith(('.xlsx', '.xls')):
                         filename = drive_file.strip()
                     elif drive_file.startswith('http'):
                         file_id = get_drive_file_id_from_string(drive_file)
 
-                # If no explicit id and folder URL is provided, try latest-file lookup
-                if file_id is None and folder_url:
-                    latest_file_info = find_latest_drive_file_in_folder_page(folder_url)
-                    if latest_file_info[0]:
-                        file_id, latest_filename = latest_file_info
-                        st.info(f"Loading latest file from folder: {latest_filename}")
+                # Try latest-file heuristic if no id/filename provided and folder is given
+                if file_id is None and not filename and folder_url:
+                    fid, fname = find_latest_drive_file_in_folder_page(folder_url)
+                    if fid:
+                        file_id = fid
+                        st.info(f"Loading latest file from folder: {fname}")
 
-                # If still no id and filename is provided, try filename lookup
+                # If filename supplied, try to find its id in the folder page
                 if file_id is None and filename and folder_url:
                     file_id = find_drive_file_id_in_folder_page(folder_url, filename)
                     if file_id:
@@ -279,17 +336,62 @@ with st.expander("📊 Data Source", expanded=False):
                     resp = requests.get(uc)
                     resp.raise_for_status()
                     df = pd.read_excel(BytesIO(resp.content))
-                elif filename and folder_url:
-                    st.error("Could not locate the file id from the shared folder page. Google Drive folder HTML is often not parseable without Drive API access. Please use a direct shared file link or file id instead.")
-                else:
-                    st.error("Could not determine a Drive file id. Please paste a full file URL or a valid Drive file id.")
-
-                if df is not None:
                     st.success("Drive file loaded successfully ✅")
+                elif filename and folder_url:
+                    st.error("Could not locate the file id from the shared folder page. Please provide a direct shared file link or file id, or use the listing below to pick a file.")
                 else:
-                    st.error("Failed to load file from Drive. Check file access and sharing settings.")
+                    st.error("Could not determine a Drive file id. Paste a full file URL or a valid Drive file id, or use the listing below to pick a file.")
+
             except Exception as e:
                 st.error(f"⚠️ Error loading from Drive: {e}")
+
+        # If the file field is blank and a folder URL is provided, show a selectable listing + actions
+        if not drive_file and folder_url:
+            st.markdown("**Available .xlsx/.xls files in folder (best-effort, public/shared folders only):**")
+            files = find_all_drive_files_in_folder_page(folder_url)
+            if not files:
+                st.info("No files found using lightweight folder scraping. For reliable listing use a Drive service-account and the Drive API.")
+            else:
+                # Display selectbox with friendly labels
+                display_names = [f"{name} — {fid}" if name and name != fid else fid for fid, name in files]
+                choice = st.selectbox("Select a file to Load or Delete:", options=list(range(len(display_names))), format_func=lambda i: display_names[i])
+                selected_fid, selected_name = files[choice]
+
+                col_load, col_delete = st.columns([1,1])
+                with col_load:
+                    if st.button("Load selected file"):
+                        try:
+                            uc = f"https://drive.google.com/uc?export=download&id={selected_fid}"
+                            resp = requests.get(uc)
+                            resp.raise_for_status()
+                            df = pd.read_excel(BytesIO(resp.content))
+                            st.success(f"Loaded: {selected_name or selected_fid} ✅")
+                        except Exception as e:
+                            st.error(f"Failed to load selected file: {e}")
+                with col_delete:
+                    st.caption("Deleting requires a Drive service-account JSON with access to the folder.")
+                    sa_file = st.file_uploader("Service account JSON (for delete)", type=["json"])
+                    if st.button("Delete selected file"):
+                        if not sa_file:
+                            st.error("Service account JSON required to delete files.")
+                        else:
+                            try:
+                                sa_path = os.path.join('.', 'sa_temp.json')
+                                with open(sa_path, 'wb') as f:
+                                    f.write(sa_file.getbuffer())
+                                ok, err = delete_drive_file_with_service_account(sa_path, selected_fid)
+                                try:
+                                    os.remove(sa_path)
+                                except Exception:
+                                    pass
+                                if ok:
+                                    st.success(f"Deleted: {selected_name or selected_fid} ✅")
+                                    # remove from local listing to reflect change
+                                    files = [t for t in files if t[0] != selected_fid]
+                                else:
+                                    st.error(f"Failed to delete: {err}")
+                            except Exception as e:
+                                st.error(f"Error during delete: {e}")
     else:
         # Upload Excel File option
         uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx", "xls"])
