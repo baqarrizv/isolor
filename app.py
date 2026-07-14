@@ -357,7 +357,7 @@ with st.expander("📊 Data Source", expanded=False):
                 choice = st.selectbox("Select a file to Load or Delete:", options=list(range(len(display_names))), format_func=lambda i: display_names[i])
                 selected_fid, selected_name = files[choice]
 
-                col_load, col_delete = st.columns([1,1])
+                col_load = st.columns([1])[0]
                 with col_load:
                     if st.button("Load selected file"):
                         try:
@@ -368,30 +368,7 @@ with st.expander("📊 Data Source", expanded=False):
                             st.success(f"Loaded: {selected_name or selected_fid} ✅")
                         except Exception as e:
                             st.error(f"Failed to load selected file: {e}")
-                with col_delete:
-                    st.caption("Deleting requires a Drive service-account JSON with access to the folder.")
-                    sa_file = st.file_uploader("Service account JSON (for delete)", type=["json"])
-                    if st.button("Delete selected file"):
-                        if not sa_file:
-                            st.error("Service account JSON required to delete files.")
-                        else:
-                            try:
-                                sa_path = os.path.join('.', 'sa_temp.json')
-                                with open(sa_path, 'wb') as f:
-                                    f.write(sa_file.getbuffer())
-                                ok, err = delete_drive_file_with_service_account(sa_path, selected_fid)
-                                try:
-                                    os.remove(sa_path)
-                                except Exception:
-                                    pass
-                                if ok:
-                                    st.success(f"Deleted: {selected_name or selected_fid} ✅")
-                                    # remove from local listing to reflect change
-                                    files = [t for t in files if t[0] != selected_fid]
-                                else:
-                                    st.error(f"Failed to delete: {err}")
-                            except Exception as e:
-                                st.error(f"Error during delete: {e}")
+                st.caption("Delete via Drive API removed. Use Google Drive web UI to manage files.")
     else:
         # Upload Excel File option
         uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx", "xls"])
