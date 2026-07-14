@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import requests
+import re
 import os
 from io import BytesIO
 
@@ -99,7 +100,7 @@ st.markdown("Upload your inverter Excel file or use a Google Sheet link and get 
 
 # Option to choose data source - Default is Google Sheet (collapsed by default)
 with st.expander("📊 Data Source", expanded=False):
-    data_source = st.radio("Choose Data Source:", ["🔗 Google Sheet Link", "📁 Upload Excel File"], horizontal=True, index=0)
+    data_source = st.radio("Choose Data Source:", ["🔗 Google Sheet Link", "📁 Upload Excel File", "📂 Fetch from Drive"], horizontal=True, index=0)
 
     df = None
 
@@ -129,6 +130,52 @@ with st.expander("📊 Data Source", expanded=False):
         except Exception as e:
             st.error(f"⚠️ Error loading Google Sheet: {str(e)}")
             st.info("Make sure the sheet is published to web and you have the correct URL.")
+    elif data_source == "📂 Fetch from Drive":
+        # Drive folder URL (pre-filled for convenience) and file id/filename input
+        folder_url = st.text_input("📁 Drive Folder URL (optional)", value="https://drive.google.com/drive/folders/1dazVdDTcKTehgIe36jmP2uqNqkqAYPw5")
+        drive_file = st.text_input("Enter Drive file URL, file id or filename (e.g. 17840308811634.xlsx)")
+
+        if st.button("Fetch from Drive"):
+            try:
+                df = None
+
+                # If user pasted a full Drive file URL, try fetching directly
+                if drive_file and drive_file.startswith("http"):
+                    resp = requests.get(drive_file)
+                    resp.raise_for_status()
+                    df = pd.read_excel(BytesIO(resp.content))
+                else:
+                    # Try to extract file id from the provided folder_url or drive_file
+                    file_id = None
+                    if drive_file:
+                        m = re.search(r"/d/([a-zA-Z0-9_-]+)", drive_file)
+                        if m:
+                            file_id = m.group(1)
+                    if not file_id and folder_url:
+                        m = re.search(r"/folders/([a-zA-Z0-9_-]+)", folder_url)
+                        # folder id found but we cannot list folder contents without Drive API
+                        # if user entered just an id-like string, treat it as file id
+                    # If user supplied a short token (no slashes) treat it as file id
+                    if not file_id and drive_file and not drive_file.startswith("http"):
+                        token = drive_file.strip()
+                        if token:
+                            # assume user provided either filename or file id; try as id first
+                            file_id = token.replace('.xlsx', '').replace('.xls', '')
+
+                    if file_id:
+                        uc = f"https://drive.google.com/uc?export=download&id={file_id}"
+                        resp = requests.get(uc)
+                        resp.raise_for_status()
+                        df = pd.read_excel(BytesIO(resp.content))
+                    else:
+                        st.error("Could not determine a Drive file id. Paste a full file URL or file id.")
+
+                if df is not None:
+                    st.success("Drive file loaded successfully ✅")
+                else:
+                    st.error("Failed to load file from Drive. Check URL/id and permissions.")
+            except Exception as e:
+                st.error(f"⚠️ Error loading from Drive: {e}")
     else:
         # Upload Excel File option
         uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx", "xls"])
