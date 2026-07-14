@@ -444,7 +444,7 @@ if df is not None:
     # ===== DATE FILTER (MUST BE BEFORE SIDEBAR) =====
     # Store date options in session state to persist across reruns
     date_options = sorted(df["date"].unique(), reverse=True)
-    st.session_state["date_options"] = date_options.tolist()
+    st.session_state["date_options"] = date_options
     
     if len(date_options) == 0:
         st.error("⚠️ No valid dates found in the data.")
