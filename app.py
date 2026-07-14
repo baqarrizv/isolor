@@ -914,7 +914,7 @@ if df is not None:
             fig_charge_energy = px.pie(
                 charge_energy_data, values='Energy (kWh)', names='Source',
                 title="Battery Charging Energy Distribution",
-                color_discrete_sequence=['#FFD700', '#1E90FF']
+                color_discrete_sequence=['#1E90FF', '#FFD700']
             )
             fig_charge_energy.update_traces(textposition='inside', textinfo='percent+label')
             st.plotly_chart(fig_charge_energy, use_container_width=True, config={
