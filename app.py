@@ -275,7 +275,7 @@ with st.expander("📊 Data Source", expanded=False):
         st.session_state["drive_auto_loaded"] = False
 
     # Default Google Sheet URL (hardcoded)
-    DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTy3qIf4XMXKwCzy4jhWksU5wm3IehRxvn783TJwoBljQdkYiE5wETGaIsY_rSGl0P3/pub?output=xlsx"
+    DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTy3qIf4XMXKwCzy4jhWksU5wm3KqYeqvFWVSusIehRxvn783TJwoBljQdkYiE5wETGaIsY_rSGl0P3/pub?output=xlsx"
 
     if data_source == "🔗 Google Sheet Link":
         # Google Sheet option - use hardcoded URL by default
