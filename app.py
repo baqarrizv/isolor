@@ -266,14 +266,16 @@ window.addEventListener('resize', adjustForMobile);
 st.title("🔋 Inverter Analytics")
 st.markdown("Upload your inverter Excel file or use a Google Sheet link and get detailed hourly & daily insights.")
 
-# Option to choose data source - Default is Google Sheet (collapsed by default)
+# Option to choose data source - Default is Fetch from Drive for automatic latest-file loading
 with st.expander("📊 Data Source", expanded=False):
-    data_source = st.radio("Choose Data Source:", ["🔗 Google Sheet Link", "📁 Upload Excel File", "📂 Fetch from Drive"], horizontal=True, index=0)
+    data_source = st.radio("Choose Data Source:", ["🔗 Google Sheet Link", "📁 Upload Excel File", "📂 Fetch from Drive"], horizontal=True, index=2)
 
     df = None
+    if "drive_auto_loaded" not in st.session_state:
+        st.session_state["drive_auto_loaded"] = False
 
     # Default Google Sheet URL (hardcoded)
-    DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTy3qIf4XMXKwCzy4jhWksU5wm3KqYeqvFWVSusIehRxvn783TJwoBljQdkYiE5wETGaIsY_rSGl0P3/pub?output=xlsx"
+    DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTy3qIf4XMXKwCzy4jhWksU5wm3IehRxvn783TJwoBljQdkYiE5wETGaIsY_rSGl0P3/pub?output=xlsx"
 
     if data_source == "🔗 Google Sheet Link":
         # Google Sheet option - use hardcoded URL by default
@@ -303,8 +305,16 @@ with st.expander("📊 Data Source", expanded=False):
         folder_url = st.text_input("📁 Drive Folder URL (optional)", value="https://drive.google.com/drive/folders/1dazVdDTcKTehgIe36jmP2uqNqkqAYPw5")
         drive_file = st.text_input("Enter Drive file URL, file id or filename (e.g. 17840308811634.xlsx)")
         st.caption("Leave the file field blank to load the latest .xlsx/.xls file from the shared folder.")
-        # If the user provided a specific file/url/id and clicked Fetch, try that first
-        if st.button("Fetch from Drive"):
+
+        fetch_drive_button = st.button("Fetch from Drive", key="fetch_drive_main")
+        auto_fetch_drive = False
+        if not drive_file and folder_url and not st.session_state["drive_auto_loaded"]:
+            auto_fetch_drive = True
+            st.session_state["drive_auto_loaded"] = True
+
+        if fetch_drive_button or auto_fetch_drive:
+            if auto_fetch_drive:
+                st.info("Automatically loading latest file from shared Drive folder...")
             try:
                 df = None
                 file_id = None
@@ -346,7 +356,7 @@ with st.expander("📊 Data Source", expanded=False):
                 st.error(f"⚠️ Error loading from Drive: {e}")
 
         # If the file field is blank and a folder URL is provided, show a selectable listing + actions
-        if not drive_file and folder_url:
+        if df is None and not drive_file and folder_url:
             st.markdown("**Available .xlsx/.xls files in folder (best-effort, public/shared folders only):**")
             files = find_all_drive_files_in_folder_page(folder_url)
             if not files:
@@ -359,7 +369,7 @@ with st.expander("📊 Data Source", expanded=False):
 
                 col_load = st.columns([1])[0]
                 with col_load:
-                    if st.button("Load selected file"):
+                    if st.button("Load selected file", key="load_selected_drive_file"):
                         try:
                             uc = f"https://drive.google.com/uc?export=download&id={selected_fid}"
                             resp = requests.get(uc)
