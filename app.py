@@ -266,13 +266,15 @@ window.addEventListener('resize', adjustForMobile);
 st.title("🔋 Inverter Analytics")
 st.markdown("Upload your inverter Excel file or use a Google Sheet link and get detailed hourly & daily insights.")
 
+# Initialize session state for dataframe
+if "df" not in st.session_state:
+    st.session_state["df"] = None
+if "drive_auto_loaded" not in st.session_state:
+    st.session_state["drive_auto_loaded"] = False
+
 # Option to choose data source - Default is Fetch from Drive for automatic latest-file loading
 with st.expander("📊 Data Source", expanded=False):
     data_source = st.radio("Choose Data Source:", ["🔗 Google Sheet Link", "📁 Upload Excel File", "📂 Fetch from Drive"], horizontal=True, index=2)
-
-    df = None
-    if "drive_auto_loaded" not in st.session_state:
-        st.session_state["drive_auto_loaded"] = False
 
     # Default Google Sheet URL (hardcoded)
     DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTy3qIf4XMXKwCzy4jhWksU5wm3KqYeqvFWVSusIehRxvn783TJwoBljQdkYiE5wETGaIsY_rSGl0P3/pub?output=xlsx"
@@ -294,7 +296,7 @@ with st.expander("📊 Data Source", expanded=False):
             response.raise_for_status()
             
             # Read Excel from response
-            df = pd.read_excel(BytesIO(response.content))
+            st.session_state["df"] = pd.read_excel(BytesIO(response.content))
             st.success("Google Sheet Loaded Successfully ✅")
             
         except Exception as e:
@@ -316,7 +318,7 @@ with st.expander("📊 Data Source", expanded=False):
             if auto_fetch_drive:
                 st.info("Automatically loading latest file from shared Drive folder...")
             try:
-                df = None
+                st.session_state["df"] = None
                 file_id = None
                 filename = None
 
@@ -345,7 +347,7 @@ with st.expander("📊 Data Source", expanded=False):
                     uc = f"https://drive.google.com/uc?export=download&id={file_id}"
                     resp = requests.get(uc)
                     resp.raise_for_status()
-                    df = pd.read_excel(BytesIO(resp.content))
+                    st.session_state["df"] = pd.read_excel(BytesIO(resp.content))
                     st.success("Drive file loaded successfully ✅")
                 elif filename and folder_url:
                     st.error("Could not locate the file id from the shared folder page. Please provide a direct shared file link or file id, or use the listing below to pick a file.")
@@ -356,7 +358,7 @@ with st.expander("📊 Data Source", expanded=False):
                 st.error(f"⚠️ Error loading from Drive: {e}")
 
         # If the file field is blank and a folder URL is provided, show a selectable listing + actions
-        if df is None and not drive_file and folder_url:
+        if st.session_state["df"] is None and not drive_file and folder_url:
             st.markdown("**Available .xlsx/.xls files in folder (best-effort, public/shared folders only):**")
             files = find_all_drive_files_in_folder_page(folder_url)
             if not files:
@@ -374,7 +376,7 @@ with st.expander("📊 Data Source", expanded=False):
                             uc = f"https://drive.google.com/uc?export=download&id={selected_fid}"
                             resp = requests.get(uc)
                             resp.raise_for_status()
-                            df = pd.read_excel(BytesIO(resp.content))
+                            st.session_state["df"] = pd.read_excel(BytesIO(resp.content))
                             st.success(f"Loaded: {selected_name or selected_fid} ✅")
                         except Exception as e:
                             st.error(f"Failed to load selected file: {e}")
@@ -386,7 +388,7 @@ with st.expander("📊 Data Source", expanded=False):
         # If user uploaded a file, use it. Otherwise check for local file.
         if uploaded_file is not None:
             try:
-                df = pd.read_excel(uploaded_file)
+                st.session_state["df"] = pd.read_excel(uploaded_file)
                 st.success(f"Loaded uploaded file: {uploaded_file.name} ✅")
             except Exception as e:
                 st.error(f"Error reading uploaded file: {e}")
@@ -395,12 +397,13 @@ with st.expander("📊 Data Source", expanded=False):
             local_file = 'simplefile.xlsx'
             if os.path.exists(local_file):
                 try:
-                    df = pd.read_excel(local_file)
+                    st.session_state["df"] = pd.read_excel(local_file)
                     st.success(f"Loaded local file: {local_file} ✅")
                 except Exception as e:
                     st.warning(f"Could not load local file: {e}")
 
 # Rest of the code remains the same
+df = st.session_state["df"]
 if df is not None:
     # Normalize column names
     df.columns = [col.strip().lower().replace(" ", "_") for col in df.columns]
