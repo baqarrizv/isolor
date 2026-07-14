@@ -92,6 +92,15 @@ def find_latest_drive_file_in_folder_page(folder_url):
                 candidates.append((id_match.group(1), filename))
 
         if not candidates:
+            file_ids = re.findall(r'/d/([a-zA-Z0-9_-]{25,})', html)
+            if file_ids:
+                return file_ids[0], None
+            file_ids = re.findall(r'[?&]id=([a-zA-Z0-9_-]{25,})', html)
+            if file_ids:
+                return file_ids[0], None
+            data_ids = re.findall(r'data-id="([a-zA-Z0-9_-]{25,})"', html)
+            if data_ids:
+                return data_ids[0], None
             return None, None
 
         seen = set()
