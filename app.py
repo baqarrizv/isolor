@@ -266,11 +266,15 @@ window.addEventListener('resize', adjustForMobile);
 st.title("🔋 Inverter Analytics")
 st.markdown("Upload your inverter Excel file or use a Google Sheet link and get detailed hourly & daily insights.")
 
-# Initialize session state for dataframe
+# Initialize session state for dataframe and date options
 if "df" not in st.session_state:
     st.session_state["df"] = None
 if "drive_auto_loaded" not in st.session_state:
     st.session_state["drive_auto_loaded"] = False
+if "date_options" not in st.session_state:
+    st.session_state["date_options"] = []
+if "selected_date" not in st.session_state:
+    st.session_state["selected_date"] = None
 
 # Option to choose data source - Default is Fetch from Drive for automatic latest-file loading
 with st.expander("📊 Data Source", expanded=False):
@@ -425,6 +429,12 @@ if df is not None:
     if df[datetime_col].isna().all():
         st.error("⚠️ Could not parse datetime column. Please check your data format.")
         st.stop()
+    
+    # Check if some dates couldn't be parsed
+    num_invalid = df[datetime_col].isna().sum()
+    if num_invalid > 0:
+        st.warning(f"⚠️ Warning: {num_invalid} rows have invalid dates and will be skipped.")
+        df = df.dropna(subset=[datetime_col])
 
     df["date"] = df[datetime_col].dt.date
     df["hour"] = df[datetime_col].dt.hour
@@ -432,7 +442,10 @@ if df is not None:
     st.success("File Loaded Successfully ✅")
     
     # ===== DATE FILTER (MUST BE BEFORE SIDEBAR) =====
+    # Store date options in session state to persist across reruns
     date_options = sorted(df["date"].unique(), reverse=True)
+    st.session_state["date_options"] = date_options.tolist()
+    
     if len(date_options) == 0:
         st.error("⚠️ No valid dates found in the data.")
         st.stop()
@@ -448,7 +461,12 @@ if df is not None:
     )
     
     # Second: Select Date
-    selected_date = st.sidebar.selectbox("Select Date", date_options)
+    # Use session state for selected_date to persist across reruns
+    if st.session_state["selected_date"] not in date_options:
+        st.session_state["selected_date"] = date_options[0]
+    
+    selected_date = st.sidebar.selectbox("Select Date", date_options, index=list(date_options).index(st.session_state["selected_date"]))
+    st.session_state["selected_date"] = selected_date
     
     # Energy calculation function
     def calculate_daily_energy(df, datetime_col, calc_method):
@@ -1561,4 +1579,7 @@ if df is not None:
         st.dataframe(day_df)
 
 else:
+    # Clear date options when no data is loaded
+    st.session_state["date_options"] = []
+    st.session_state["selected_date"] = None
     st.info("Please upload an Excel file or enter a Google Sheet link to begin analysis.")
