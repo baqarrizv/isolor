@@ -7,6 +7,47 @@ import re
 import os
 from io import BytesIO
 
+
+def get_drive_file_id_from_string(token):
+    if not token:
+        return None
+    if token.startswith("http"):
+        m = re.search(r"/d/([a-zA-Z0-9_-]+)", token)
+        if m:
+            return m.group(1)
+        m = re.search(r"[?&]id=([a-zA-Z0-9_-]+)", token)
+        if m:
+            return m.group(1)
+        return None
+    # If the token looks like a real Drive file id
+    if re.fullmatch(r"[a-zA-Z0-9_-]{25,}", token):
+        return token
+    return None
+
+
+def find_drive_file_id_in_folder_page(folder_url, filename):
+    try:
+        response = requests.get(folder_url)
+        response.raise_for_status()
+        html = response.text
+
+        # Look for a file id near the filename in the folder page HTML
+        for m in re.finditer(r"/d/([a-zA-Z0-9_-]{25,})", html):
+            idx = m.start()
+            chunk = html[max(0, idx - 800):idx + 800]
+            if filename in chunk:
+                return m.group(1)
+
+        # As fallback, look for a query-string style id near the filename
+        for m in re.finditer(r"[?&]id=([a-zA-Z0-9_-]{25,})", html):
+            idx = m.start()
+            chunk = html[max(0, idx - 800):idx + 800]
+            if filename in chunk:
+                return m.group(1)
+    except Exception:
+        pass
+    return None
+
 # Mobile-friendly page config
 st.set_page_config(
     page_title="Inverter Analytics",
@@ -138,42 +179,38 @@ with st.expander("📊 Data Source", expanded=False):
         if st.button("Fetch from Drive"):
             try:
                 df = None
+                file_id = None
+                filename = None
 
-                # If user pasted a full Drive file URL, try fetching directly
-                if drive_file and drive_file.startswith("http"):
-                    resp = requests.get(drive_file)
+                # If the user provided a full Drive file URL, parse the id
+                file_id = get_drive_file_id_from_string(drive_file)
+
+                # If the user provided a filename, try a folder page parse
+                if file_id is None and drive_file:
+                    if drive_file.lower().endswith(('.xlsx', '.xls')):
+                        filename = drive_file.strip()
+                    elif drive_file.startswith('http'):
+                        file_id = get_drive_file_id_from_string(drive_file)
+
+                if file_id is None and filename and folder_url:
+                    file_id = find_drive_file_id_in_folder_page(folder_url, filename)
+                    if file_id:
+                        st.info(f"Found file id for {filename} from folder page.")
+
+                if file_id:
+                    uc = f"https://drive.google.com/uc?export=download&id={file_id}"
+                    resp = requests.get(uc)
                     resp.raise_for_status()
                     df = pd.read_excel(BytesIO(resp.content))
+                elif filename and folder_url:
+                    st.error("Could not locate the file id from the shared folder page. Make sure the folder is public and the filename is exact.")
                 else:
-                    # Try to extract file id from the provided folder_url or drive_file
-                    file_id = None
-                    if drive_file:
-                        m = re.search(r"/d/([a-zA-Z0-9_-]+)", drive_file)
-                        if m:
-                            file_id = m.group(1)
-                    if not file_id and folder_url:
-                        m = re.search(r"/folders/([a-zA-Z0-9_-]+)", folder_url)
-                        # folder id found but we cannot list folder contents without Drive API
-                        # if user entered just an id-like string, treat it as file id
-                    # If user supplied a short token (no slashes) treat it as file id
-                    if not file_id and drive_file and not drive_file.startswith("http"):
-                        token = drive_file.strip()
-                        if token:
-                            # assume user provided either filename or file id; try as id first
-                            file_id = token.replace('.xlsx', '').replace('.xls', '')
-
-                    if file_id:
-                        uc = f"https://drive.google.com/uc?export=download&id={file_id}"
-                        resp = requests.get(uc)
-                        resp.raise_for_status()
-                        df = pd.read_excel(BytesIO(resp.content))
-                    else:
-                        st.error("Could not determine a Drive file id. Paste a full file URL or file id.")
+                    st.error("Could not determine a Drive file id. Please paste a full file URL or a valid Drive file id.")
 
                 if df is not None:
                     st.success("Drive file loaded successfully ✅")
                 else:
-                    st.error("Failed to load file from Drive. Check URL/id and permissions.")
+                    st.error("Failed to load file from Drive. Check file access and sharing settings.")
             except Exception as e:
                 st.error(f"⚠️ Error loading from Drive: {e}")
     else:
