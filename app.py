@@ -44,9 +44,67 @@ def find_drive_file_id_in_folder_page(folder_url, filename):
             chunk = html[max(0, idx - 800):idx + 800]
             if filename in chunk:
                 return m.group(1)
+
+        # Another fallback: locate the filename and search nearby for an id-like string.
+        for m in re.finditer(re.escape(filename), html):
+            idx = m.start()
+            chunk = html[max(0, idx - 1200):idx + 1200]
+            id_match = re.search(r"/d/([a-zA-Z0-9_-]{25,})", chunk)
+            if id_match:
+                return id_match.group(1)
+            id_match = re.search(r"[?&]id=([a-zA-Z0-9_-]{25,})", chunk)
+            if id_match:
+                return id_match.group(1)
+            id_match = re.search(r'["\']([a-zA-Z0-9_-]{25,})["\']', chunk)
+            if id_match:
+                return id_match.group(1)
     except Exception:
         pass
     return None
+
+
+def find_latest_drive_file_in_folder_page(folder_url):
+    try:
+        response = requests.get(folder_url)
+        response.raise_for_status()
+        html = response.text
+
+        candidates = []
+
+        # Try common JSON-like file entries with id + title/name
+        for m in re.finditer(r'"id":"([a-zA-Z0-9_-]{25,})".*?"title":"([^"]+?\.(?:xlsx|xls))"', html, re.DOTALL):
+            candidates.append((m.group(1), m.group(2)))
+        for m in re.finditer(r'"id":"([a-zA-Z0-9_-]{25,})".*?"name":"([^"]+?\.(?:xlsx|xls))"', html, re.DOTALL):
+            candidates.append((m.group(1), m.group(2)))
+
+        # Try direct Drive link patterns around Excel filename text
+        for m in re.finditer(r'/d/([a-zA-Z0-9_-]{25,}).{0,200}?([A-Za-z0-9_\-\.]+?\.(?:xlsx|xls))', html):
+            candidates.append((m.group(1), m.group(2)))
+
+        # If no direct metadata found, search for filenames and nearby ids
+        for m in re.finditer(r'([A-Za-z0-9_\-\.]+?\.(?:xlsx|xls))', html):
+            filename = m.group(1)
+            start = max(0, m.start() - 1200)
+            end = min(len(html), m.end() + 1200)
+            chunk = html[start:end]
+            id_match = re.search(r'/d/([a-zA-Z0-9_-]{25,})', chunk)
+            if id_match:
+                candidates.append((id_match.group(1), filename))
+
+        if not candidates:
+            return None, None
+
+        seen = set()
+        unique = []
+        for fid, name in candidates:
+            if fid not in seen:
+                seen.add(fid)
+                unique.append((fid, name))
+
+        # Prefer the first found candidate as the latest file in the folder
+        return unique[0]
+    except Exception:
+        return None, None
 
 # Mobile-friendly page config
 st.set_page_config(
@@ -175,23 +233,33 @@ with st.expander("📊 Data Source", expanded=False):
         # Drive folder URL (pre-filled for convenience) and file id/filename input
         folder_url = st.text_input("📁 Drive Folder URL (optional)", value="https://drive.google.com/drive/folders/1dazVdDTcKTehgIe36jmP2uqNqkqAYPw5")
         drive_file = st.text_input("Enter Drive file URL, file id or filename (e.g. 17840308811634.xlsx)")
+        st.caption("Leave the file field blank to load the latest .xlsx/.xls file from the shared folder.")
 
         if st.button("Fetch from Drive"):
             try:
                 df = None
                 file_id = None
                 filename = None
+                latest_file_info = None
 
-                # If the user provided a full Drive file URL, parse the id
+                # If the user provided a full Drive file URL or file id, parse the id
                 file_id = get_drive_file_id_from_string(drive_file)
 
-                # If the user provided a filename, try a folder page parse
+                # If the user provided a filename, keep it for lookup
                 if file_id is None and drive_file:
                     if drive_file.lower().endswith(('.xlsx', '.xls')):
                         filename = drive_file.strip()
                     elif drive_file.startswith('http'):
                         file_id = get_drive_file_id_from_string(drive_file)
 
+                # If no explicit id and folder URL is provided, try latest-file lookup
+                if file_id is None and folder_url:
+                    latest_file_info = find_latest_drive_file_in_folder_page(folder_url)
+                    if latest_file_info[0]:
+                        file_id, latest_filename = latest_file_info
+                        st.info(f"Loading latest file from folder: {latest_filename}")
+
+                # If still no id and filename is provided, try filename lookup
                 if file_id is None and filename and folder_url:
                     file_id = find_drive_file_id_in_folder_page(folder_url, filename)
                     if file_id:
@@ -203,7 +271,7 @@ with st.expander("📊 Data Source", expanded=False):
                     resp.raise_for_status()
                     df = pd.read_excel(BytesIO(resp.content))
                 elif filename and folder_url:
-                    st.error("Could not locate the file id from the shared folder page. Make sure the folder is public and the filename is exact.")
+                    st.error("Could not locate the file id from the shared folder page. Google Drive folder HTML is often not parseable without Drive API access. Please use a direct shared file link or file id instead.")
                 else:
                     st.error("Could not determine a Drive file id. Please paste a full file URL or a valid Drive file id.")
 
