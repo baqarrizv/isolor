@@ -194,99 +194,31 @@ if df is not None:
         help="Fixed 5 Minutes: Uses 5 min per row. Average Based: Auto-detects time interval from data (default)."
     )
     
-    # =====  DATE NAVIGATION WITH SWIPE SUPPORT =====
+    # ===== DATE NAVIGATION =====
     # Initialize session state for date index
     if 'date_index' not in st.session_state:
         st.session_state.date_index = 0
     
-    # Inject custom CSS and JavaScript for swipe detection
-    swipe_html = """
-    <script>
-        let touchStartX = 0;
-        let touchEndX = 0;
-        
-        document.addEventListener('touchstart', (e) => {
-            touchStartX = e.changedTouches[0].screenX;
-        }, false);
-        
-        document.addEventListener('touchend', (e) => {
-            touchEndX = e.changedTouches[0].screenX;
-            handleSwipe();
-        }, false);
-        
-        function handleSwipe() {
-            const diff = touchStartX - touchEndX;
-            const threshold = 50;
-            
-            if (Math.abs(diff) > threshold) {
-                if (diff > 0) {
-                    // Swiped left - next date
-                    window.parent.postMessage({type: 'next_date'}, '*');
-                } else {
-                    // Swiped right - previous date
-                    window.parent.postMessage({type: 'prev_date'}, '*');
-                }
-            }
-        }
-        
-        // Keyboard navigation
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowLeft') {
-                window.parent.postMessage({type: 'next_date'}, '*');
-            } else if (e.key === 'ArrowRight') {
-                window.parent.postMessage({type: 'prev_date'}, '*');
-            }
-        }, false);
-    </script>
+    # Custom CSS for styling
+    nav_css = """
     <style>
-        .date-nav-container {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        .date-nav-btn {
-            padding: 10px 15px;
-            border: 2px solid #1f77b4;
-            background-color: #f0f2f6;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: bold;
-            transition: all 0.2s;
-        }
-        .date-nav-btn:hover {
-            background-color: #1f77b4;
-            color: white;
-        }
         .date-display {
             font-size: 18px;
             font-weight: bold;
             color: #1f77b4;
-            min-width: 150px;
             text-align: center;
+            padding: 10px;
         }
         @media (max-width: 768px) {
-            .date-nav-container {
-                margin-bottom: 15px;
-            }
-            .date-nav-btn {
-                padding: 8px 12px;
-                font-size: 12px;
-            }
             .date-display {
                 font-size: 16px;
-                min-width: 120px;
             }
         }
     </style>
     """
+    st.markdown(nav_css, unsafe_allow_html=True)
     
-    st.markdown(swipe_html, unsafe_allow_html=True)
-    
-    # Handle date navigation
+    # Handle date navigation with buttons
     col_nav_left, col_nav_date, col_nav_right = st.columns([1, 2, 1])
     
     with col_nav_left:
@@ -312,11 +244,7 @@ if df is not None:
     selected_date = date_options[st.session_state.date_index]
     
     # Add info message about navigation
-    col_info1, col_info2 = st.columns(2)
-    with col_info1:
-        st.caption(f"📍 Date {st.session_state.date_index + 1} of {len(date_options)}")
-    with col_info2:
-        st.caption("💡 Swipe left/right or use ◀▶ buttons or ← → keys")
+    st.caption(f"📍 Date {st.session_state.date_index + 1} of {len(date_options)} | 👈 Click buttons to navigate")
     
     # Energy calculation function
     def calculate_daily_energy(df, datetime_col, calc_method):
