@@ -281,14 +281,14 @@ with st.expander("📊 Data Source", expanded=False):
             st.info(f"📋 Using default Google Sheet")
         
         try:
-            # Fetch the sheet
-            response = requests.get(sheet_url)
-            response.raise_for_status()
-            
-            # Read Excel from response
-            st.session_state["df"] = pd.read_excel(BytesIO(response.content))
+            with st.spinner("Loading Google Sheet..."):
+                # Fetch the sheet
+                response = requests.get(sheet_url)
+                response.raise_for_status()
+                
+                # Read Excel from response
+                st.session_state["df"] = pd.read_excel(BytesIO(response.content))
             st.success("Google Sheet Loaded Successfully ✅")
-            
         except Exception as e:
             st.error(f"⚠️ Error loading Google Sheet: {str(e)}")
             st.info("Make sure the sheet is published to web and you have the correct URL.")
@@ -308,42 +308,42 @@ with st.expander("📊 Data Source", expanded=False):
             if auto_fetch_drive:
                 st.info("Automatically loading latest file from shared Drive folder...")
             try:
-                st.session_state["df"] = None
-                file_id = None
-                filename = None
+                with st.spinner("Loading Drive file..."):
+                    st.session_state["df"] = None
+                    file_id = None
+                    filename = None
 
-                file_id = get_drive_file_id_from_string(drive_file)
+                    file_id = get_drive_file_id_from_string(drive_file)
 
-                if file_id is None and drive_file:
-                    if drive_file.lower().endswith(('.xlsx', '.xls')):
-                        filename = drive_file.strip()
-                    elif drive_file.startswith('http'):
-                        file_id = get_drive_file_id_from_string(drive_file)
+                    if file_id is None and drive_file:
+                        if drive_file.lower().endswith(('.xlsx', '.xls')):
+                            filename = drive_file.strip()
+                        elif drive_file.startswith('http'):
+                            file_id = get_drive_file_id_from_string(drive_file)
 
-                # Try latest-file heuristic if no id/filename provided and folder is given
-                if file_id is None and not filename and folder_url:
-                    fid, fname = find_latest_drive_file_in_folder_page(folder_url)
-                    if fid:
-                        file_id = fid
-                        st.info(f"Loading latest file from folder: {fname}")
+                    # Try latest-file heuristic if no id/filename provided and folder is given
+                    if file_id is None and not filename and folder_url:
+                        fid, fname = find_latest_drive_file_in_folder_page(folder_url)
+                        if fid:
+                            file_id = fid
+                            st.info(f"Loading latest file from folder: {fname}")
 
-                # If filename supplied, try to find its id in the folder page
-                if file_id is None and filename and folder_url:
-                    file_id = find_drive_file_id_in_folder_page(folder_url, filename)
+                    # If filename supplied, try to find its id in the folder page
+                    if file_id is None and filename and folder_url:
+                        file_id = find_drive_file_id_in_folder_page(folder_url, filename)
+                        if file_id:
+                            st.info(f"Found file id for {filename} from folder page.")
+
                     if file_id:
-                        st.info(f"Found file id for {filename} from folder page.")
-
-                if file_id:
-                    uc = f"https://drive.google.com/uc?export=download&id={file_id}"
-                    resp = requests.get(uc)
-                    resp.raise_for_status()
-                    st.session_state["df"] = pd.read_excel(BytesIO(resp.content))
-                    st.success("Drive file loaded successfully ✅")
-                elif filename and folder_url:
-                    st.error("Could not locate the file id from the shared folder page. Please provide a direct shared file link or file id, or use the listing below to pick a file.")
-                else:
-                    st.error("Could not determine a Drive file id. Paste a full file URL or a valid Drive file id, or use the listing below to pick a file.")
-
+                        uc = f"https://drive.google.com/uc?export=download&id={file_id}"
+                        resp = requests.get(uc)
+                        resp.raise_for_status()
+                        st.session_state["df"] = pd.read_excel(BytesIO(resp.content))
+                        st.success("Drive file loaded successfully ✅")
+                    elif filename and folder_url:
+                        st.error("Could not locate the file id from the shared folder page. Please provide a direct shared file link or file id, or use the listing below to pick a file.")
+                    else:
+                        st.error("Could not determine a Drive file id. Paste a full file URL or a valid Drive file id, or use the listing below to pick a file.")
             except Exception as e:
                 st.error(f"⚠️ Error loading from Drive: {e}")
 
@@ -363,10 +363,11 @@ with st.expander("📊 Data Source", expanded=False):
                 with col_load:
                     if st.button("Load selected file", key="load_selected_drive_file"):
                         try:
-                            uc = f"https://drive.google.com/uc?export=download&id={selected_fid}"
-                            resp = requests.get(uc)
-                            resp.raise_for_status()
-                            st.session_state["df"] = pd.read_excel(BytesIO(resp.content))
+                            with st.spinner("Loading selected Drive file..."):
+                                uc = f"https://drive.google.com/uc?export=download&id={selected_fid}"
+                                resp = requests.get(uc)
+                                resp.raise_for_status()
+                                st.session_state["df"] = pd.read_excel(BytesIO(resp.content))
                             st.success(f"Loaded: {selected_name or selected_fid} ✅")
                         except Exception as e:
                             st.error(f"Failed to load selected file: {e}")
@@ -378,7 +379,8 @@ with st.expander("📊 Data Source", expanded=False):
         # If user uploaded a file, use it. Otherwise check for local file.
         if uploaded_file is not None:
             try:
-                st.session_state["df"] = pd.read_excel(uploaded_file)
+                with st.spinner(f"Loading uploaded file: {uploaded_file.name}..."):
+                    st.session_state["df"] = pd.read_excel(uploaded_file)
                 st.success(f"Loaded uploaded file: {uploaded_file.name} ✅")
             except Exception as e:
                 st.error(f"Error reading uploaded file: {e}")
@@ -387,7 +389,8 @@ with st.expander("📊 Data Source", expanded=False):
             local_file = 'simplefile.xlsx'
             if os.path.exists(local_file):
                 try:
-                    st.session_state["df"] = pd.read_excel(local_file)
+                    with st.spinner(f"Loading local file: {local_file}..."):
+                        st.session_state["df"] = pd.read_excel(local_file)
                     st.success(f"Loaded local file: {local_file} ✅")
                 except Exception as e:
                     st.warning(f"Could not load local file: {e}")
@@ -454,17 +457,24 @@ if df is not None:
         st.session_state['date_index'] = 0
 
     col_hdr_left, col_hdr_mid, col_hdr_right = st.columns([1, 2, 1])
+    is_prev_disabled = st.session_state['date_index'] >= len(date_options) - 1
+    is_next_disabled = st.session_state['date_index'] <= 0
+
     with col_hdr_left:
-        if st.button("◀ Older", key="inline_prev_date", use_container_width=True):
+        if st.button("◀ Older", key="inline_prev_date", use_container_width=True, disabled=is_prev_disabled):
             if st.session_state['date_index'] < len(date_options) - 1:
                 st.session_state['date_index'] += 1
+        if is_prev_disabled:
+            st.caption("No older dates available")
     with col_hdr_mid:
         st.markdown("#### 📊 Date Navigation")
         st.markdown("Use Older/Newer buttons or the sidebar Select Date")
     with col_hdr_right:
-        if st.button("Newer ▶", key="inline_next_date", use_container_width=True):
+        if st.button("Newer ▶", key="inline_next_date", use_container_width=True, disabled=is_next_disabled):
             if st.session_state['date_index'] > 0:
                 st.session_state['date_index'] -= 1
+        if is_next_disabled:
+            st.caption("No newer dates available")
 
     selected_date = st.sidebar.selectbox(
         "Select Date",
