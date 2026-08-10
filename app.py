@@ -527,7 +527,32 @@ if df is not None:
     # Note: selected_date is already set in sidebar above
     
     # ===== BREAKDOWN SECTION (DIRECT DISPLAY - BEFORE DAILY ENERGY CHART) =====
-    st.subheader(f"📊 Breakdown in Units: {selected_date}")
+    # Inline date selector (mirrors sidebar) so user can change date here
+    col_hdr_left, col_hdr_mid, col_hdr_right = st.columns([1, 2, 1])
+    with col_hdr_left:
+        if st.button("◀", key="inline_prev_date", use_container_width=True):
+            # move to previous date in list (wrap around)
+            idx = date_options.index(st.session_state.get('selected_date', date_options[0]))
+            if idx < len(date_options) - 1:
+                st.session_state['selected_date'] = date_options[idx + 1]
+            else:
+                st.session_state['selected_date'] = date_options[0]
+            st.experimental_rerun()
+    with col_hdr_mid:
+        st.subheader("📊 Breakdown in Units:")
+        new_date = st.selectbox("", date_options, index=list(date_options).index(st.session_state.get('selected_date', date_options[0])), key='inline_date_select')
+        # keep sidebar selection in sync
+        st.session_state['selected_date'] = new_date
+    with col_hdr_right:
+        if st.button("▶", key="inline_next_date", use_container_width=True):
+            idx = date_options.index(st.session_state.get('selected_date', date_options[0]))
+            if idx > 0:
+                st.session_state['selected_date'] = date_options[idx - 1]
+            else:
+                st.session_state['selected_date'] = date_options[-1]
+            st.experimental_rerun()
+
+    selected_date = st.session_state.get('selected_date', selected_date)
     selected_day_data = daily_energy[daily_energy['date'] == selected_date]
     if len(selected_day_data) > 0:
         selected_day = selected_day_data.iloc[0]
