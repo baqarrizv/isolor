@@ -468,7 +468,6 @@ if df is not None:
             st.caption("No older dates available")
     with col_hdr_mid:
         st.markdown("#### 📊 Date Navigation")
-        st.markdown("Use Older/Newer buttons or the sidebar Select Date")
     with col_hdr_right:
         if st.button("Newer ▶", key="inline_next_date", use_container_width=True, disabled=is_next_disabled):
             if st.session_state['date_index'] > 0:
@@ -557,7 +556,7 @@ if df is not None:
     daily_display.columns = ['Date', 'Solar (kWh)', 'Grid (kWh)', 'Load (kWh)', 'Battery (kWh)', 'Records']
     
     # Note: selected_date is already set in sidebar above
-    st.markdown(f"**Viewing date:** {selected_date} — {st.session_state['date_index']+1}/{len(date_options)}")
+    st.markdown(f"<div class='date-display'>Viewing date: {selected_date} — {st.session_state['date_index']+1}/{len(date_options)}</div>", unsafe_allow_html=True)
 
     # ===== BREAKDOWN SECTION (DIRECT DISPLAY - BEFORE DAILY ENERGY CHART) =====
     selected_day_data = daily_energy[daily_energy['date'] == selected_date]
