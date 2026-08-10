@@ -453,27 +453,12 @@ if df is not None:
     if st.session_state['date_index'] >= len(date_options):
         st.session_state['date_index'] = 0
 
-    def _sync_date_index_from_sidebar():
-        selected = st.session_state.sidebar_date_select
-        if selected in date_options:
-            st.session_state['date_index'] = date_options.index(selected)
-
-    def _sync_date_index_from_inline():
-        selected = st.session_state.inline_date_select
-        if selected in date_options:
-            st.session_state['date_index'] = date_options.index(selected)
-
-    # Sidebar selectbox shows actual dates
-    st.sidebar.selectbox(
+    selected_date = st.sidebar.selectbox(
         "Select Date",
         date_options,
-        index=st.session_state['date_index'],
-        key='sidebar_date_select',
-        on_change=_sync_date_index_from_sidebar
+        index=st.session_state['date_index']
     )
-
-    # Current selected date after sidebar or inline change
-    selected_date = date_options[st.session_state['date_index']]
+    st.session_state['date_index'] = date_options.index(selected_date)
     
     # Energy calculation function
     def calculate_daily_energy(df, datetime_col, calc_method):
@@ -557,19 +542,10 @@ if df is not None:
             else:
                 idx = 0
             st.session_state['date_index'] = idx
-            st.session_state['sidebar_date_select'] = date_options[idx]
-            st.session_state['inline_date_select'] = date_options[idx]
     with col_hdr_mid:
         st.markdown("#### 📊 Breakdown in Units")
-        st.markdown(f"**Viewing date:** {selected_date}")
-        inline_choice = st.selectbox(
-            "Choose date:",
-            date_options,
-            index=st.session_state.get('date_index', 0),
-            key='inline_date_select',
-            on_change=_sync_date_index_from_inline
-        )
-        st.session_state['sidebar_date_select'] = inline_choice
+        st.markdown(f"**Viewing date:** {selected_date} — {st.session_state['date_index']+1}/{len(date_options)}")
+
     with col_hdr_right:
         if st.button("Newer ▶", key="inline_next_date", use_container_width=True):
             idx = st.session_state.get('date_index', 0)
@@ -578,8 +554,6 @@ if df is not None:
             else:
                 idx = len(date_options) - 1
             st.session_state['date_index'] = idx
-            st.session_state['sidebar_date_select'] = date_options[idx]
-            st.session_state['inline_date_select'] = date_options[idx]
 
     selected_date = date_options[st.session_state.get('date_index', 0)]
     selected_day_data = daily_energy[daily_energy['date'] == selected_date]
