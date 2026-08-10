@@ -459,6 +459,9 @@ if df is not None:
         index=st.session_state['date_index']
     )
     st.session_state['date_index'] = date_options.index(selected_date)
+    st.sidebar.caption(f"Available dates: {len(date_options)}")
+    with st.sidebar.expander("📅 All Available Dates", expanded=False):
+        st.write(date_options)
     
     # Energy calculation function
     def calculate_daily_energy(df, datetime_col, calc_method):
@@ -539,8 +542,6 @@ if df is not None:
             idx = st.session_state.get('date_index', 0)
             if idx < len(date_options) - 1:
                 idx += 1
-            else:
-                idx = 0
             st.session_state['date_index'] = idx
     with col_hdr_mid:
         st.markdown("#### 📊 Breakdown in Units")
@@ -551,8 +552,6 @@ if df is not None:
             idx = st.session_state.get('date_index', 0)
             if idx > 0:
                 idx -= 1
-            else:
-                idx = len(date_options) - 1
             st.session_state['date_index'] = idx
 
     selected_date = date_options[st.session_state.get('date_index', 0)]
