@@ -483,7 +483,7 @@ if df is not None:
         if is_prev_disabled:
             st.caption("No older dates available")
     with col_hdr_mid:
-        st.markdown(f"<div class='date-display'>📅 Date: {date_options[st.session_state['date_index']]} — {st.session_state['date_index'] + 1}/{len(date_options)}</div>", unsafe_allow_html=True)
+        st.header(f"📅 Viewing date: {date_options[st.session_state['date_index']]} — {st.session_state['date_index'] + 1}/{len(date_options)}")
     with col_hdr_right:
         if st.button("Newer ▶", key="inline_next_date", use_container_width=True, disabled=is_next_disabled):
             if st.session_state['date_index'] > 0:
