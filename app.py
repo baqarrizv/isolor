@@ -234,33 +234,19 @@ st.markdown(""""
         width: 100% !important;
         margin-bottom: 0.5rem;
     }
+    /* Additional responsive helpers (CSS-only) */
+    @media (max-width: 768px) {
+        [data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 0.5rem !important;
+        }
+        div[data-testid="stPlotlyChart"] {
+            min-height: 300px !important;
+        }
+    }
 </style>
 
-<script>
-// Additional mobile responsive adjustments
-function adjustForMobile() {
-    const isMobile = window.innerWidth <= 768;
-    
-    // Stack all column groups vertically on mobile
-    if (isMobile) {
-        const columns = document.querySelectorAll('[data-testid="stHorizontalBlock"]');
-        columns.forEach(col => {
-            col.style.flexDirection = 'column';
-            col.style.gap = '0.5rem';
-        });
-        
-        // Make charts taller on mobile for better visibility
-        const charts = document.querySelectorAll('[data-testid="stPlotlyChart"]');
-        charts.forEach(chart => {
-            chart.style.minHeight = '300px';
-        });
-    }
-}
-
-// Run on load and resize
-window.addEventListener('load', adjustForMobile);
-window.addEventListener('resize', adjustForMobile);
-</script>
 """, unsafe_allow_html=True)
 
 st.title("🔋 Inverter Analytics")

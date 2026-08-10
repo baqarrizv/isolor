@@ -65,6 +65,19 @@ st.markdown(""""
         width: 100% !important;
         margin-bottom: 0.5rem;
     }
+        /* CSS-only responsive helpers */
+        @media (max-width: 768px) {
+            [data-testid="stHorizontalBlock"] {
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 0.5rem !important;
+            }
+            div[data-testid="stPlotlyChart"] {
+                min-height: 300px !important;
+            }
+        }
+    </style>
+    """
 </style>
 
 <script>
