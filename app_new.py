@@ -428,6 +428,8 @@ if df is not None:
     df["date"] = df[datetime_col].dt.date
     df["hour"] = df[datetime_col].dt.hour
 
+    battery_col = next((col for col in df.columns if 'battery_voltage' in col.lower()), None)
+
     st.success("File Loaded Successfully ✅")
 
     # Summary row for the loaded dataset
@@ -439,7 +441,7 @@ if df is not None:
     col_sum1.metric("📅 Date Range", f"{date_min} → {date_max}")
     col_sum2.metric("🗓️ Total Days", f"{total_days}")
     col_sum3.metric("📄 Total Records", f"{total_rows}")
-    col_sum4.metric("🧠 Data Quality", "Loaded successfully")
+    col_sum4.metric("🔋 Battery Data", "Available" if battery_col else "Not Found")
 
     # ===== DATE FILTER (MUST BE BEFORE SIDEBAR) =====
     # Store date options in session state to persist across reruns
@@ -728,7 +730,45 @@ if df is not None:
         'displayModeBar': True,
         'modeBarButtonsToRemove': ['lasso2d', 'select2d']
     })
-    
+
+    if battery_col and len(date_options) > 1:
+        st.subheader("🔋 Battery Voltage Summary Across Dates")
+        battery_daily = df[[datetime_col, battery_col, 'date']].copy()
+        battery_daily = battery_daily.groupby('date')[battery_col].agg(['mean', 'min', 'max']).reset_index()
+        battery_daily = battery_daily.rename(columns={'mean': 'avg_voltage', 'min': 'min_voltage', 'max': 'max_voltage'})
+
+        fig_battery_overall = px.line(
+            battery_daily,
+            x='date',
+            y='avg_voltage',
+            markers=True,
+            title='Average Battery Voltage per Day',
+            labels={'date': 'Date', 'avg_voltage': 'Avg Voltage (V)'}
+        )
+        fig_battery_overall.add_scatter(
+            x=battery_daily['date'],
+            y=battery_daily['max_voltage'],
+            mode='lines',
+            name='Max Voltage',
+            line=dict(color='#0072B2', dash='dot')
+        )
+        fig_battery_overall.add_scatter(
+            x=battery_daily['date'],
+            y=battery_daily['min_voltage'],
+            mode='lines',
+            name='Min Voltage',
+            line=dict(color='#D55E00', dash='dot')
+        )
+        fig_battery_overall.update_layout(
+            hovermode='closest',
+            legend_title_text='Battery Voltage'
+        )
+        st.plotly_chart(fig_battery_overall, use_container_width=True, config={
+            'responsive': True,
+            'displayModeBar': True,
+            'modeBarButtonsToRemove': ['lasso2d', 'select2d']
+        })
+
     # ===== ANALYSIS FOR SELECTED DATE (START) =====
     day_df = df[df["date"] == selected_date]
 
@@ -943,22 +983,22 @@ if df is not None:
     })
     
     # Battery Voltage Graph (DIRECT DISPLAY - NO EXPANDER)
-    battery_col = None
-    for col in day_df_sorted.columns:
-        if 'battery_voltage' in col.lower():
-            battery_col = col
-            break
-    
     if battery_col:
-        # Create battery chart with custom hover (like Grid Voltage chart)
+        battery_summary_avg = day_df_sorted[battery_col].mean()
+        battery_summary_min = day_df_sorted[battery_col].min()
+        battery_summary_max = day_df_sorted[battery_col].max()
+
+        col_bv1, col_bv2, col_bv3 = st.columns(3)
+        col_bv1.metric("🔋 Avg Battery V", f"{battery_summary_avg:.2f} V")
+        col_bv2.metric("🔋 Min Battery V", f"{battery_summary_min:.2f} V")
+        col_bv3.metric("🔋 Max Battery V", f"{battery_summary_max:.2f} V")
+
         fig_battery = px.line(day_df_sorted, x=datetime_col, y=battery_col,
                              title="Battery Voltage Trend",
                              markers=True)
         
-        # Build custom hover with key params - battery voltage value first, then others
         battery_hover = f"<b>Battery Voltage</b>: %{{y:.2f}} V<br>"
         
-        # Add other columns to hover (excluding battery_col and datetime_col)
         hover_cols_for_battery = []
         for col in display_cols:
             col_lower = col.lower() if isinstance(col, str) else ''
@@ -974,7 +1014,6 @@ if df is not None:
             battery_hover += f"<b>Work Mode</b>: %{{customdata[{len(hover_cols_for_battery)}]}}<br>"
         battery_hover += f"<b>Time</b>: %{{x}}"
         
-        # Prepare customdata
         battery_customdata = []
         for _, row in day_df_sorted.iterrows():
             row_data = []
@@ -986,9 +1025,24 @@ if df is not None:
             battery_customdata.append(tuple(row_data))
         
         fig_battery.update_traces(hovertemplate=battery_hover, customdata=battery_customdata)
-        fig_battery.update_layout(hovermode='closest', hoverdistance=-1)
+        fig_battery.update_layout(
+            hovermode='closest',
+            hoverdistance=-1,
+            yaxis_title="Battery Voltage (V)",
+            shapes=[
+                dict(type="line", xref="paper", x0=0, x1=1, yref="y", y0=24.0, y1=24.0,
+                     line=dict(color="red", width=1, dash="dash"), layer="below"),
+                dict(type="line", xref="paper", x0=0, x1=1, yref="y", y0=28.5, y1=28.5,
+                     line=dict(color="green", width=1, dash="dash"), layer="below")
+            ],
+            annotations=[
+                dict(xref="paper", x=0.99, y=24.0, xanchor="right", yanchor="bottom",
+                     text="Low battery threshold", showarrow=False, font=dict(size=11, color="red")),
+                dict(xref="paper", x=0.99, y=28.5, xanchor="right", yanchor="bottom",
+                     text="Full battery threshold", showarrow=False, font=dict(size=11, color="green"))
+            ]
+        )
         
-        # Make chart responsive for mobile
         st.plotly_chart(fig_battery, use_container_width=True, config={
             'responsive': True,
             'displayModeBar': True,
