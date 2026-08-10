@@ -177,7 +177,7 @@ def delete_drive_file_with_service_account(sa_path, file_id):
 
 # Mobile-friendly page config
 st.set_page_config(
-    page_title="Inverter Analytics",
+    page_title="Inverter Analytics.",
     page_icon="🔋",
     layout="centered",
     initial_sidebar_state="collapsed"
