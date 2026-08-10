@@ -453,6 +453,19 @@ if df is not None:
     if st.session_state['date_index'] >= len(date_options):
         st.session_state['date_index'] = 0
 
+    col_hdr_left, col_hdr_mid, col_hdr_right = st.columns([1, 2, 1])
+    with col_hdr_left:
+        if st.button("◀ Older", key="inline_prev_date", use_container_width=True):
+            if st.session_state['date_index'] < len(date_options) - 1:
+                st.session_state['date_index'] += 1
+    with col_hdr_mid:
+        st.markdown("#### 📊 Date Navigation")
+        st.markdown("Use Older/Newer buttons or the sidebar Select Date")
+    with col_hdr_right:
+        if st.button("Newer ▶", key="inline_next_date", use_container_width=True):
+            if st.session_state['date_index'] > 0:
+                st.session_state['date_index'] -= 1
+
     selected_date = st.sidebar.selectbox(
         "Select Date",
         date_options,
@@ -534,27 +547,9 @@ if df is not None:
     daily_display.columns = ['Date', 'Solar (kWh)', 'Grid (kWh)', 'Load (kWh)', 'Battery (kWh)', 'Records']
     
     # Note: selected_date is already set in sidebar above
-    
+    st.markdown(f"**Viewing date:** {selected_date} — {st.session_state['date_index']+1}/{len(date_options)}")
+
     # ===== BREAKDOWN SECTION (DIRECT DISPLAY - BEFORE DAILY ENERGY CHART) =====
-    col_hdr_left, col_hdr_mid, col_hdr_right = st.columns([1, 2, 1])
-    with col_hdr_left:
-        if st.button("◀ Older", key="inline_prev_date", use_container_width=True):
-            idx = st.session_state.get('date_index', 0)
-            if idx < len(date_options) - 1:
-                idx += 1
-            st.session_state['date_index'] = idx
-    with col_hdr_mid:
-        st.markdown("#### 📊 Breakdown in Units")
-        st.markdown(f"**Viewing date:** {selected_date} — {st.session_state['date_index']+1}/{len(date_options)}")
-
-    with col_hdr_right:
-        if st.button("Newer ▶", key="inline_next_date", use_container_width=True):
-            idx = st.session_state.get('date_index', 0)
-            if idx > 0:
-                idx -= 1
-            st.session_state['date_index'] = idx
-
-    selected_date = date_options[st.session_state.get('date_index', 0)]
     selected_day_data = daily_energy[daily_energy['date'] == selected_date]
     if len(selected_day_data) > 0:
         selected_day = selected_day_data.iloc[0]
