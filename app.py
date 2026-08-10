@@ -531,8 +531,13 @@ if df is not None:
     col_hdr_left, col_hdr_mid, col_hdr_right = st.columns([1, 2, 1])
     with col_hdr_left:
         if st.button("◀", key="inline_prev_date", use_container_width=True):
-            # move to previous date in list (wrap around)
-            idx = date_options.index(st.session_state.get('selected_date', date_options[0]))
+            # move to previous date in list (wrap around). Be defensive if date not found.
+            try:
+                current = st.session_state.get('selected_date', date_options[0])
+                idx = date_options.index(current)
+            except Exception:
+                idx = 0
+            # Prev -> older date (next index because list is reverse-sorted)
             if idx < len(date_options) - 1:
                 st.session_state['selected_date'] = date_options[idx + 1]
             else:
@@ -545,7 +550,12 @@ if df is not None:
         st.session_state['selected_date'] = new_date
     with col_hdr_right:
         if st.button("▶", key="inline_next_date", use_container_width=True):
-            idx = date_options.index(st.session_state.get('selected_date', date_options[0]))
+            try:
+                current = st.session_state.get('selected_date', date_options[0])
+                idx = date_options.index(current)
+            except Exception:
+                idx = 0
+            # Next -> newer date (previous index because list is reverse-sorted)
             if idx > 0:
                 st.session_state['selected_date'] = date_options[idx - 1]
             else:
