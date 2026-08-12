@@ -6,7 +6,6 @@ import requests
 import re
 import os
 from io import BytesIO
-import streamlit.components.v1 as components
 
 
 def get_drive_file_id_from_string(token):
@@ -262,10 +261,10 @@ st.markdown("""
 
 """, unsafe_allow_html=True)
 
-# Floating Zoom Toggle Button (stays fixed at top-right and toggles zoom on the last Plotly chart)
-components.html(
+# Floating Zoom Toggle Button (injected into main DOM so it stays fixed while scrolling)
+st.markdown(
         """
-        <div id="floating-zoom-container" style="position:fixed;top:12px;right:12px;z-index:9999;">
+        <div id="floating-zoom-container" style="position:fixed;top:12px;right:12px;z-index:99999;">
             <button id="floating-zoom-btn" style="background:#4CAF50;color:white;border:none;padding:10px 14px;border-radius:6px;font-size:14px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.2)">Enable Zoom</button>
         </div>
         <script>
@@ -305,17 +304,18 @@ components.html(
             }
 
             // Attach click
-            btn.addEventListener('click', function(e){
-                toggleZoom();
-            });
+            if(btn){
+                btn.addEventListener('click', function(e){
+                    toggleZoom();
+                });
+            }
 
             // Expose toggle to window (optional) so other scripts can call it
             window.streamlitFloatingZoomToggle = toggleZoom;
         })();
         </script>
         """,
-        height=60,
-        scrolling=False,
+        unsafe_allow_html=True,
 )
 
 st.title("🔋 Inverter Analytics")
