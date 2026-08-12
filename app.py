@@ -179,18 +179,25 @@ def delete_drive_file_with_service_account(sa_path, file_id):
 st.set_page_config(
     page_title="Inverter Analytics.",
     page_icon="🔋",
-    layout="centered",
+    layout="wide",
     initial_sidebar_state="collapsed"
 )
 
 # Custom CSS for mobile responsiveness
-st.markdown(""""
+st.markdown("""
 <style>
     /* Mobile-first responsive styles */
     @media (max-width: 768px) {
-        .stApp {
-            padding: 0.5rem;
+        .stApp,
+        .block-container,
+        .stApp .main,
+        section[data-testid="stSidebar"] {
+            padding: 0.5rem !important;
+            margin: 0 auto !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
         }
+
         .stTitle {
             font-size: 1.5rem !important;
         }
@@ -201,7 +208,7 @@ st.markdown(""""
             padding: 0.5rem !important;
         }
         div[data-testid="stMetricLabel"] {
-            font-size: 0.8rem !important;
+            font-size: 0.85rem !important;
         }
         div[data-testid="stMetricValue"] {
             font-size: 1rem !important;
@@ -209,8 +216,11 @@ st.markdown(""""
     }
     
     /* Make charts full width on mobile */
-    div[data-testid="stPlotlyChart"] {
-        width: 100%;
+    div[data-testid="stPlotlyChart"],
+    div[data-testid="stPlotlyChart"] > div,
+    div[data-testid="stPlotlyChart"] > div > div {
+        width: 100% !important;
+        min-width: unset !important;
     }
     
     /* Better spacing for mobile */
@@ -230,8 +240,13 @@ st.markdown(""""
     }
     
     /* Stack columns on small screens */
-    div[data-testid="column"] {
+    div[data-testid="stVerticalBlock"],
+    div[data-testid="stHorizontalBlock"],
+    div[data-testid="column"],
+    div[data-testid="stRadio"] > div {
         width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
         margin-bottom: 0.5rem;
     }
     /* Additional responsive helpers (CSS-only) */
@@ -242,7 +257,7 @@ st.markdown(""""
             gap: 0.5rem !important;
         }
         div[data-testid="stPlotlyChart"] {
-            min-height: 300px !important;
+            min-height: 320px !important;
         }
     }
 </style>
