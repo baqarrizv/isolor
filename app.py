@@ -239,22 +239,19 @@ st.markdown("""
         flex-direction: column;
     }
     
-    /* Stack columns on small screens */
-    div[data-testid="stVerticalBlock"],
-    div[data-testid="stHorizontalBlock"],
-    div[data-testid="column"],
-    div[data-testid="stRadio"] > div {
+    /* Keep columns horizontal when possible, but keep radio items stacked for readability */
+    div[data-testid="column"] {
         width: 100% !important;
-        display: flex !important;
-        flex-direction: column !important;
         margin-bottom: 0.5rem;
+    }
+    div[data-testid="stRadio"] > div {
+        flex-direction: column !important;
     }
     /* Additional responsive helpers (CSS-only) */
     @media (max-width: 768px) {
         [data-testid="stHorizontalBlock"] {
-            display: flex !important;
-            flex-direction: column !important;
             gap: 0.5rem !important;
+            flex-wrap: wrap !important;
         }
         div[data-testid="stPlotlyChart"] {
             min-height: 320px !important;
