@@ -342,7 +342,7 @@ components.html(
         scrolling=False,
 )
 
-# Per-chart toolbars: add small Graph Options button beside each Plotly chart to enable chart-specific actions only when clicked
+# Per-chart toolbars: add small Tools button beside each Plotly chart to enable zoom, zoom in/out, reset, save
 components.html(
         """
         <script>
@@ -356,7 +356,7 @@ components.html(
 
                 var btn = document.createElement('button');
                 btn.className = 'streamlit-plot-tools-btn';
-                btn.innerText = 'Show Graph Options';
+                btn.innerText = 'Tools';
                 btn.style.position = 'absolute';
                 btn.style.top = '8px';
                 btn.style.right = '8px';
@@ -364,27 +364,23 @@ components.html(
                 btn.style.background = '#1976d2';
                 btn.style.color = 'white';
                 btn.style.border = 'none';
-                btn.style.padding = '6px 10px';
+                btn.style.padding = '6px 8px';
                 btn.style.borderRadius = '4px';
                 btn.style.cursor = 'pointer';
-                btn.style.fontWeight = '600';
 
                 var panel = document.createElement('div');
                 panel.style.position = 'absolute';
                 panel.style.top = '40px';
                 panel.style.right = '8px';
                 panel.style.zIndex = '9999';
-                panel.style.background = 'rgba(255,255,255,0.96)';
-                panel.style.border = '1px solid rgba(0,0,0,0.15)';
-                panel.style.boxShadow = '0 8px 20px rgba(0,0,0,0.12)';
-                panel.style.borderRadius = '8px';
-                panel.style.padding = '8px';
+                panel.style.background = 'rgba(255,255,255,0.95)';
+                panel.style.border = '1px solid rgba(0,0,0,0.1)';
+                panel.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+                panel.style.borderRadius = '6px';
+                panel.style.padding = '6px';
                 panel.style.display = 'none';
                 panel.style.gap = '6px';
                 panel.style.whiteSpace = 'nowrap';
-                panel.style.flexDirection = 'column';
-                panel.style.alignItems = 'flex-start';
-                panel.style.minWidth = '140px';
 
                 function findGd(){
                     return plotWrapper.querySelector('.js-plotly-plot');
@@ -427,32 +423,17 @@ components.html(
                     try{ Plotly.downloadImage(gd, {format:'png', filename:'chart'}); }catch(e){console.warn(e)}
                 }
 
-                var zoomToggle = document.createElement('button');
-                zoomToggle.innerText = 'Enable Zoom';
-                zoomToggle.style.padding='6px 10px';
-                zoomToggle.style.margin='0 0 6px 0';
-                zoomToggle.style.cursor='pointer';
-                zoomToggle.style.border='1px solid rgba(0,0,0,0.1)';
-                zoomToggle.style.borderRadius='4px';
-                zoomToggle.style.background='#f0f0f0';
+                var toggle = document.createElement('button'); toggle.innerText = 'Enable';
+                toggle.style.padding='6px'; toggle.style.margin='0 4px 4px 0'; toggle.style.cursor='pointer';
+                var zin = document.createElement('button'); zin.innerText='Zoom In'; zin.style.padding='6px'; zin.style.cursor='pointer';
+                var zout = document.createElement('button'); zout.innerText='Zoom Out'; zout.style.padding='6px'; zout.style.cursor='pointer';
+                var rbtn = document.createElement('button'); rbtn.innerText='Reset'; rbtn.style.padding='6px'; rbtn.style.cursor='pointer';
+                var sbtn = document.createElement('button'); sbtn.innerText='Save'; sbtn.style.padding='6px'; sbtn.style.cursor='pointer';
 
-                var zin = document.createElement('button'); zin.innerText='Zoom In'; zin.style.padding='6px 10px'; zin.style.cursor='pointer'; zin.style.border='1px solid rgba(0,0,0,0.1)'; zin.style.borderRadius='4px'; zin.style.background='#fafafa'; zin.style.margin='0 0 6px 0';
-                var zout = document.createElement('button'); zout.innerText='Zoom Out'; zout.style.padding='6px 10px'; zout.style.cursor='pointer'; zout.style.border='1px solid rgba(0,0,0,0.1)'; zout.style.borderRadius='4px'; zout.style.background='#fafafa'; zout.style.margin='0 0 6px 0';
-                var rbtn = document.createElement('button'); rbtn.innerText='Reset'; rbtn.style.padding='6px 10px'; rbtn.style.cursor='pointer'; rbtn.style.border='1px solid rgba(0,0,0,0.1)'; rbtn.style.borderRadius='4px'; rbtn.style.background='#fafafa'; rbtn.style.margin='0 0 6px 0';
-                var sbtn = document.createElement('button'); sbtn.innerText='Save'; sbtn.style.padding='6px 10px'; sbtn.style.cursor='pointer'; sbtn.style.border='1px solid rgba(0,0,0,0.1)'; sbtn.style.borderRadius='4px'; sbtn.style.background='#fafafa';
+                panel.appendChild(toggle); panel.appendChild(zin); panel.appendChild(zout); panel.appendChild(rbtn); panel.appendChild(sbtn);
 
-                panel.appendChild(zoomToggle);
-                panel.appendChild(zin);
-                panel.appendChild(zout);
-                panel.appendChild(rbtn);
-                panel.appendChild(sbtn);
-
-                var zoomEnabled = false;
-                zoomToggle.addEventListener('click', function(){
-                    zoomEnabled = !zoomEnabled;
-                    zoomToggle.innerText = zoomEnabled ? 'Disable Zoom' : 'Enable Zoom';
-                    setDrag(zoomEnabled);
-                });
+                var enabled = false;
+                toggle.addEventListener('click', function(){ enabled = !enabled; toggle.innerText = enabled ? 'Disable' : 'Enable'; setDrag(enabled); panel.style.display = enabled ? 'flex' : 'none'; });
                 zin.addEventListener('click', function(){ safe(function(){ zoom(0.6); }); });
                 zout.addEventListener('click', function(){ safe(function(){ zoom(1.6); }); });
                 rbtn.addEventListener('click', function(){ safe(reset); });
@@ -461,15 +442,8 @@ components.html(
                 plotWrapper.appendChild(btn);
                 plotWrapper.appendChild(panel);
 
-                btn.addEventListener('click', function(){
-                    if(panel.style.display === 'none'){
-                        panel.style.display = 'flex';
-                        btn.innerText = 'Hide Graph Options';
-                    } else {
-                        panel.style.display = 'none';
-                        btn.innerText = 'Show Graph Options';
-                    }
-                });
+                // Also toggle panel when main button clicked
+                btn.addEventListener('click', function(){ enabled = !enabled; toggle.innerText = enabled ? 'Disable' : 'Enable'; setDrag(enabled); panel.style.display = enabled ? 'flex' : 'none'; });
             }
 
             function scan(){
@@ -480,7 +454,9 @@ components.html(
                 }catch(e){console.warn('scan failed', e)}
             }
 
+            // Run periodically to attach to charts rendered later
             setInterval(scan, 1000);
+            // initial run
             setTimeout(scan, 500);
         })();
         </script>
