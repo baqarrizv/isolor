@@ -834,12 +834,13 @@ if df is not None:
             texttemplate='<b>%{label}</b><br>%{value:.2f} kWh<br>%{percent}'
         )
         fig_pie.update_layout(dragmode=False)
-        # Make chart responsive for mobile (show Plotly modebar)
+        # Make chart responsive for mobile
         st.plotly_chart(fig_pie, use_container_width=True, config={
-            'displayModeBar': True,
-            'scrollZoom': True,
+            'responsive': True,
+            'displayModeBar': False,
+            'scrollZoom': False,
             'doubleClick': 'reset',
-            'responsive': True
+            'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
         })
     
     # ===== DAILY ENERGY CHART (NO EXPANDER - DIRECT DISPLAY) =====
@@ -920,12 +921,12 @@ if df is not None:
         hoverdistance=15,
         dragmode=False
     )
-    # Make chart responsive for mobile (show Plotly modebar)
+    # Make chart responsive for mobile
     st.plotly_chart(fig_energy, use_container_width=True, config={
-        'displayModeBar': True,
-        'scrollZoom': True,
-        'doubleClick': 'reset',
-        'responsive': True
+        'responsive': True,
+        'displayModeBar': False,
+        'scrollZoom': False,
+        'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
     })
     
     # ===== ANALYSIS FOR SELECTED DATE (START) =====
@@ -1023,12 +1024,13 @@ if df is not None:
         fig_load.update_traces(hovertemplate=load_hover, customdata=load_customdata)
         fig_load.update_layout(hovermode='closest', hoverdistance=-1, dragmode=False)
     
-    # Make chart responsive for mobile (show Plotly modebar)
+    # Make chart responsive for mobile
     st.plotly_chart(fig_load, use_container_width=True, config={
-        'displayModeBar': True,
-        'scrollZoom': True,
+        'responsive': True,
+        'displayModeBar': False,
+        'scrollZoom': False,
         'doubleClick': 'reset',
-        'responsive': True
+        'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
     })
     
     # Find numeric columns - needed for both voltage and power charts
@@ -1135,12 +1137,12 @@ if df is not None:
     fig_voltage.update_traces(hovertemplate=voltage_hover, customdata=voltage_customdata)
     fig_voltage.update_layout(hovermode='closest', hoverdistance=-1, dragmode=False)
     
-    # Make chart responsive for mobile (show Plotly modebar)
+    # Make chart responsive for mobile
     st.plotly_chart(fig_voltage, use_container_width=True, config={
-        'displayModeBar': True,
-        'scrollZoom': True,
-        'doubleClick': 'reset',
-        'responsive': True
+        'responsive': True,
+        'displayModeBar': False,
+        'scrollZoom': False,
+        'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
     })
     
     # Battery Voltage Graph (DIRECT DISPLAY - NO EXPANDER)
@@ -1189,12 +1191,13 @@ if df is not None:
         fig_battery.update_traces(hovertemplate=battery_hover, customdata=battery_customdata)
         fig_battery.update_layout(hovermode='closest', hoverdistance=-1, dragmode=False)
         
-        # Make chart responsive for mobile (show Plotly modebar)
+        # Make chart responsive for mobile
         st.plotly_chart(fig_battery, use_container_width=True, config={
-            'displayModeBar': True,
-            'scrollZoom': True,
+            'responsive': True,
+            'displayModeBar': False,
+            'scrollZoom': False,
             'doubleClick': 'reset',
-            'responsive': True
+            'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
         })
     else:
         st.warning("Battery Voltage column not found")
@@ -1247,12 +1250,12 @@ if df is not None:
     fig_main.update_traces(hovertemplate=ac_hover, customdata=ac_customdata)
     fig_main.update_layout(hovermode='closest', hoverdistance=-1, dragmode=False)
     
-    # Make chart responsive for mobile (show Plotly modebar)
+    # Make chart responsive for mobile
     st.plotly_chart(fig_main, use_container_width=True, config={
-        'displayModeBar': True,
-        'scrollZoom': True,
-        'doubleClick': 'reset',
-        'responsive': True
+        'responsive': True,
+        'displayModeBar': False,
+        'scrollZoom': False,
+        'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
     })
 
     # Solar Mode vs Grid Mode vs Battery Mode - Based on power values (DIRECT DISPLAY - NO EXPANDER)
@@ -1320,12 +1323,12 @@ if df is not None:
         trace.textposition = 'outside'
         trace.hovertemplate = f'<b>{mode_data["Mode"].iloc[i]}</b><br>Time: {mode_data["Hours_Display"].iloc[i]}<br>Records: {mode_data["Records"].iloc[i]}'
     
-    # Make chart responsive for mobile (show Plotly modebar)
+    # Make chart responsive for mobile
     st.plotly_chart(fig_mode, use_container_width=True, config={
-        'displayModeBar': True,
-        'scrollZoom': True,
-        'doubleClick': 'reset',
-        'responsive': True
+        'responsive': True,
+        'displayModeBar': False,
+        'scrollZoom': False,
+        'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
     })
     
     col1, col2, col3 = st.columns(3)
@@ -1410,10 +1413,11 @@ if df is not None:
         )
         fig_charge_mode.update_layout(yaxis_title="Hours", dragmode=False)
         st.plotly_chart(fig_charge_mode, use_container_width=True, config={
-            'displayModeBar': True,
-            'scrollZoom': True,
+            'responsive': True,
+            'displayModeBar': False,
+            'scrollZoom': False,
             'doubleClick': 'reset',
-            'responsive': True
+            'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
         })
         
         if len(solar_charge_records) > 0 or len(grid_charge_records) > 0:
@@ -1446,10 +1450,11 @@ if df is not None:
             fig_charge_energy.update_traces(textposition='inside', textinfo='percent+label')
             fig_charge_energy.update_layout(dragmode=False)
             st.plotly_chart(fig_charge_energy, use_container_width=True, config={
-                'displayModeBar': True,
-                'scrollZoom': True,
+                'responsive': True,
+                'displayModeBar': False,
+                'scrollZoom': False,
                 'doubleClick': 'reset',
-                'responsive': True
+                'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
             })
         
         
@@ -1626,10 +1631,11 @@ if df is not None:
             )
             fig_dual.update_layout(yaxis_title="Units", dragmode=False)
             st.plotly_chart(fig_dual, use_container_width=True, config={
-                'displayModeBar': True,
-                'scrollZoom': True,
+                'responsive': True,
+                'displayModeBar': False,
+                'scrollZoom': False,
                 'doubleClick': 'reset',
-                'responsive': True
+                'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
             })
             
             fig_battery_charge = px.bar(
@@ -1644,10 +1650,11 @@ if df is not None:
             )
             fig_battery_charge.update_layout(yaxis_title="Units", dragmode=False)
             st.plotly_chart(fig_battery_charge, use_container_width=True, config={
-                'displayModeBar': True,
-                'scrollZoom': True,
+                'responsive': True,
+                'displayModeBar': False,
+                'scrollZoom': False,
                 'doubleClick': 'reset',
-                'responsive': True
+                'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
             })
             
             with st.expander("🔋 Battery Charging Timeline"):
