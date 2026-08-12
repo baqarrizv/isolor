@@ -6,7 +6,6 @@ import requests
 import re
 import os
 from io import BytesIO
-import streamlit.components.v1 as components
 
 
 def get_drive_file_id_from_string(token):
@@ -263,83 +262,60 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Floating Zoom Toggle Button (injected into main DOM so it stays fixed while scrolling)
-# Inject a button into the parent document (so it is fixed to viewport and follows scrolling)
-components.html(
+st.markdown(
         """
+        <div id="floating-zoom-container" style="position:fixed;top:12px;right:12px;z-index:99999;">
+            <button id="floating-zoom-btn" style="background:#4CAF50;color:white;border:none;padding:10px 14px;border-radius:6px;font-size:14px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.2)">Enable Zoom</button>
+        </div>
         <script>
         (function(){
-            try{
-                var pdoc = window.parent.document;
-                if(!pdoc) return;
-                if(pdoc.getElementById('streamlit-floating-zoom-btn')) return;
-
-                var container = pdoc.createElement('div');
-                container.id = 'streamlit-floating-zoom-container';
-                container.style.position = 'fixed';
-                container.style.top = '12px';
-                container.style.right = '12px';
-                container.style.zIndex = '99999';
-
-                var btn = pdoc.createElement('button');
-                btn.id = 'streamlit-floating-zoom-btn';
-                btn.innerText = 'Enable Zoom';
-                btn.style.background = '#4CAF50';
-                btn.style.color = 'white';
-                btn.style.border = 'none';
-                btn.style.padding = '10px 14px';
-                btn.style.borderRadius = '6px';
-                btn.style.fontSize = '14px';
-                btn.style.cursor = 'pointer';
-                btn.style.boxShadow = '0 2px 6px rgba(0,0,0,0.2)';
-
-                container.appendChild(btn);
-                pdoc.body.appendChild(container);
-
-                var enabled = false;
-                function setState(on){
-                    enabled = !!on;
-                    if(enabled){
-                        btn.innerText = 'Disable Zoom';
-                        btn.style.background = '#f44336';
-                    } else {
-                        btn.innerText = 'Enable Zoom';
-                        btn.style.background = '#4CAF50';
-                    }
+            var enabled = false;
+            var btn = document.getElementById('floating-zoom-btn');
+            function setState(on){
+                enabled = !!on;
+                if(enabled){
+                    btn.innerText = 'Disable Zoom';
+                    btn.style.background = '#f44336';
+                } else {
+                    btn.innerText = 'Enable Zoom';
+                    btn.style.background = '#4CAF50';
                 }
-
-                function toggleZoom(){
-                    var plots = pdoc.getElementsByClassName('js-plotly-plot');
-                    if(!plots || plots.length === 0){
-                        console.warn('No Plotly plots found on page yet.');
-                        setState(false);
-                        return;
-                    }
-                    var gd = plots[plots.length - 1];
-                    var P = pdoc.defaultView.Plotly || window.Plotly;
-                    if(typeof P === 'undefined' || !gd){
-                        console.warn('Plotly not ready or graph not found.');
-                        return;
-                    }
-                    enabled = !enabled;
-                    if(enabled){
-                        P.relayout(gd, {'dragmode': 'zoom'});
-                    } else {
-                        P.relayout(gd, {'dragmode': false});
-                    }
-                    setState(enabled);
-                }
-
-                btn.addEventListener('click', function(e){ toggleZoom(); });
-                // expose for debugging
-                pdoc.streamlitFloatingZoomToggle = toggleZoom;
-            } catch(err){
-                console.error('Floating zoom injection failed', err);
             }
+
+            function toggleZoom(){
+                var plots = document.getElementsByClassName('js-plotly-plot');
+                if(!plots || plots.length === 0){
+                    console.warn('No Plotly plots found on page yet.');
+                    setState(false);
+                    return;
+                }
+                var gd = plots[plots.length - 1]; // last rendered plot
+                if(typeof Plotly === 'undefined' || !gd){
+                    console.warn('Plotly not ready or graph not found.');
+                    return;
+                }
+                enabled = !enabled;
+                if(enabled){
+                    Plotly.relayout(gd, {'dragmode': 'zoom'});
+                } else {
+                    Plotly.relayout(gd, {'dragmode': false});
+                }
+                setState(enabled);
+            }
+
+            // Attach click
+            if(btn){
+                btn.addEventListener('click', function(e){
+                    toggleZoom();
+                });
+            }
+
+            // Expose toggle to window (optional) so other scripts can call it
+            window.streamlitFloatingZoomToggle = toggleZoom;
         })();
         </script>
         """,
-        height=1,
-        scrolling=False,
+        unsafe_allow_html=True,
 )
 
 st.title("🔋 Inverter Analytics")
