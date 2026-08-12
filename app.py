@@ -633,8 +633,9 @@ if df is not None:
         # Make chart responsive for mobile
         st.plotly_chart(fig_pie, use_container_width=True, config={
             'responsive': True,
-            'displayModeBar': True,
+            'displayModeBar': False,
             'scrollZoom': False,
+            'doubleClick': 'reset',
             'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
         })
     
@@ -719,7 +720,7 @@ if df is not None:
     # Make chart responsive for mobile
     st.plotly_chart(fig_energy, use_container_width=True, config={
         'responsive': True,
-        'displayModeBar': True,
+        'displayModeBar': False,
         'scrollZoom': False,
         'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
     })
@@ -817,13 +818,14 @@ if df is not None:
             load_customdata.append(tuple(row_data))
         
         fig_load.update_traces(hovertemplate=load_hover, customdata=load_customdata)
-        fig_load.update_layout(hovermode='closest', hoverdistance=-1)
+        fig_load.update_layout(hovermode='closest', hoverdistance=-1, dragmode=False)
     
     # Make chart responsive for mobile
     st.plotly_chart(fig_load, use_container_width=True, config={
         'responsive': True,
-        'displayModeBar': True,
+        'displayModeBar': False,
         'scrollZoom': False,
+        'doubleClick': 'reset',
         'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
     })
     
@@ -934,7 +936,7 @@ if df is not None:
     # Make chart responsive for mobile
     st.plotly_chart(fig_voltage, use_container_width=True, config={
         'responsive': True,
-        'displayModeBar': True,
+        'displayModeBar': False,
         'scrollZoom': False,
         'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
     })
@@ -988,8 +990,9 @@ if df is not None:
         # Make chart responsive for mobile
         st.plotly_chart(fig_battery, use_container_width=True, config={
             'responsive': True,
-            'displayModeBar': True,
+            'displayModeBar': False,
             'scrollZoom': False,
+            'doubleClick': 'reset',
             'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
         })
     else:
@@ -1046,7 +1049,7 @@ if df is not None:
     # Make chart responsive for mobile
     st.plotly_chart(fig_main, use_container_width=True, config={
         'responsive': True,
-        'displayModeBar': True,
+        'displayModeBar': False,
         'scrollZoom': False,
         'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
     })
@@ -1108,7 +1111,7 @@ if df is not None:
     })
     fig_mode = px.bar(mode_data, x='Mode', y='Hours', title="Total Time in Each Mode.", color='Mode',
                       color_discrete_map={'☀️ Solar': '#FFD700', '⚡ Grid': '#1E90FF', '🔋 Battery': '#00CC96'})
-    fig_mode.update_layout(yaxis_title="Hours")
+    fig_mode.update_layout(yaxis_title="Hours", dragmode=False)
     
     # Set text for each bar individually
     for i, trace in enumerate(fig_mode.data):
@@ -1119,7 +1122,7 @@ if df is not None:
     # Make chart responsive for mobile
     st.plotly_chart(fig_mode, use_container_width=True, config={
         'responsive': True,
-        'displayModeBar': True,
+        'displayModeBar': False,
         'scrollZoom': False,
         'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
     })
@@ -1204,11 +1207,12 @@ if df is not None:
             color='Source',
             color_discrete_map={'☀️ Solar': '#FFD700', '⚡ Grid': '#1E90FF', '❓ Other': '#888888'}
         )
-        fig_charge_mode.update_layout(yaxis_title="Hours")
+        fig_charge_mode.update_layout(yaxis_title="Hours", dragmode=False)
         st.plotly_chart(fig_charge_mode, use_container_width=True, config={
             'responsive': True,
-            'displayModeBar': True,
+            'displayModeBar': False,
             'scrollZoom': False,
+            'doubleClick': 'reset',
             'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
         })
         
@@ -1240,10 +1244,12 @@ if df is not None:
                 color_discrete_sequence=['#1E90FF', '#FFD700']
             )
             fig_charge_energy.update_traces(textposition='inside', textinfo='percent+label')
+            fig_charge_energy.update_layout(dragmode=False)
             st.plotly_chart(fig_charge_energy, use_container_width=True, config={
                 'responsive': True,
-                'displayModeBar': True,
+                'displayModeBar': False,
                 'scrollZoom': False,
+                'doubleClick': 'reset',
                 'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
             })
         
@@ -1419,11 +1425,12 @@ if df is not None:
                     '🔋 Battery Load': '#00CC96'
                 }
             )
-            fig_dual.update_layout(yaxis_title="Units")
+            fig_dual.update_layout(yaxis_title="Units", dragmode=False)
             st.plotly_chart(fig_dual, use_container_width=True, config={
                 'responsive': True,
-                'displayModeBar': True,
+                'displayModeBar': False,
                 'scrollZoom': False,
+                'doubleClick': 'reset',
                 'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
             })
             
@@ -1437,11 +1444,12 @@ if df is not None:
                     '⚡ Grid Battery': '#1E90FF'
                 }
             )
-            fig_battery_charge.update_layout(yaxis_title="Units")
+            fig_battery_charge.update_layout(yaxis_title="Units", dragmode=False)
             st.plotly_chart(fig_battery_charge, use_container_width=True, config={
                 'responsive': True,
-                'displayModeBar': True,
+                'displayModeBar': False,
                 'scrollZoom': False,
+                'doubleClick': 'reset',
                 'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
             })
             
