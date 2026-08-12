@@ -6,6 +6,7 @@ import requests
 import re
 import os
 from io import BytesIO
+import streamlit.components.v1 as components
 
 
 def get_drive_file_id_from_string(token):
@@ -260,6 +261,62 @@ st.markdown("""
 </style>
 
 """, unsafe_allow_html=True)
+
+# Floating Zoom Toggle Button (stays fixed at top-right and toggles zoom on the last Plotly chart)
+components.html(
+        """
+        <div id="floating-zoom-container" style="position:fixed;top:12px;right:12px;z-index:9999;">
+            <button id="floating-zoom-btn" style="background:#4CAF50;color:white;border:none;padding:10px 14px;border-radius:6px;font-size:14px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.2)">Enable Zoom</button>
+        </div>
+        <script>
+        (function(){
+            var enabled = false;
+            var btn = document.getElementById('floating-zoom-btn');
+            function setState(on){
+                enabled = !!on;
+                if(enabled){
+                    btn.innerText = 'Disable Zoom';
+                    btn.style.background = '#f44336';
+                } else {
+                    btn.innerText = 'Enable Zoom';
+                    btn.style.background = '#4CAF50';
+                }
+            }
+
+            function toggleZoom(){
+                var plots = document.getElementsByClassName('js-plotly-plot');
+                if(!plots || plots.length === 0){
+                    console.warn('No Plotly plots found on page yet.');
+                    setState(false);
+                    return;
+                }
+                var gd = plots[plots.length - 1]; // last rendered plot
+                if(typeof Plotly === 'undefined' || !gd){
+                    console.warn('Plotly not ready or graph not found.');
+                    return;
+                }
+                enabled = !enabled;
+                if(enabled){
+                    Plotly.relayout(gd, {'dragmode': 'zoom'});
+                } else {
+                    Plotly.relayout(gd, {'dragmode': false});
+                }
+                setState(enabled);
+            }
+
+            // Attach click
+            btn.addEventListener('click', function(e){
+                toggleZoom();
+            });
+
+            // Expose toggle to window (optional) so other scripts can call it
+            window.streamlitFloatingZoomToggle = toggleZoom;
+        })();
+        </script>
+        """,
+        height=60,
+        scrolling=False,
+)
 
 st.title("🔋 Inverter Analytics")
 st.markdown("Upload your inverter Excel file or use a Google Sheet link and get detailed hourly & daily insights.")
