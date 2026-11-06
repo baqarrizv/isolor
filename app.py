@@ -22,6 +22,17 @@ def download_bytes_cached(url):
     return response.content
 
 
+def move_selected_date(step):
+    """Move the active date using the current, newest-first options."""
+    options = st.session_state.get("date_options", [])
+    selected = st.session_state.get("selected_date_widget")
+    if not options:
+        return
+    current_index = options.index(selected) if selected in options else 0
+    target_index = max(0, min(len(options) - 1, current_index + step))
+    st.session_state["selected_date_widget"] = options[target_index]
+
+
 def get_drive_file_id_from_string(token):
     if not token:
         return None
@@ -508,7 +519,7 @@ if df is not None:
     st.success("File Loaded Successfully ✅")
     
     # ===== DATE FILTER (MUST BE BEFORE SIDEBAR) =====
-    # Store date options in session state to persist across reruns
+    # Keep date navigation and the sidebar selector on the same selected value.
     date_options = sorted(df["date"].unique(), reverse=True)
     st.session_state["date_options"] = date_options
     
@@ -526,12 +537,16 @@ if df is not None:
         help="Choose how much time each spreadsheet row represents. The timestamp option uses the average gap between readings."
     )
     
-    # Second: Select Date
-    # Use numeric date_index in session state to avoid widget-state races
-    if 'date_index' not in st.session_state:
-        st.session_state['date_index'] = 0
-    if st.session_state['date_index'] >= len(date_options):
-        st.session_state['date_index'] = 0
+    # If the available dates/data window changes, jump to the newest date.
+    date_signature = (tuple(date_options), len(df), str(df[datetime_col].max()))
+    if st.session_state.get("date_signature") != date_signature:
+        st.session_state["date_signature"] = date_signature
+        st.session_state["selected_date_widget"] = date_options[0]
+    elif st.session_state.get("selected_date_widget") not in date_options:
+        st.session_state["selected_date_widget"] = date_options[0]
+
+    selected_date = st.session_state["selected_date_widget"]
+    date_index = date_options.index(selected_date)
 
     st.markdown("""
     <style>
@@ -550,30 +565,25 @@ if df is not None:
     """, unsafe_allow_html=True)
 
     col_hdr_left, col_hdr_mid, col_hdr_right = st.columns([1, 2, 1])
-    is_prev_disabled = st.session_state['date_index'] >= len(date_options) - 1
-    is_next_disabled = st.session_state['date_index'] <= 0
+    is_prev_disabled = date_index >= len(date_options) - 1
+    is_next_disabled = date_index <= 0
 
     with col_hdr_left:
-        if st.button("◀ Older", key="inline_prev_date", use_container_width=True, disabled=is_prev_disabled):
-            if st.session_state['date_index'] < len(date_options) - 1:
-                st.session_state['date_index'] += 1
+        st.button("◀ Older", key="inline_prev_date", use_container_width=True, disabled=is_prev_disabled, on_click=move_selected_date, args=(1,))
         if is_prev_disabled:
             st.caption("No older dates available")
     with col_hdr_mid:
-        st.header(f"📅 {date_options[st.session_state['date_index']]} — {st.session_state['date_index'] + 1}/{len(date_options)}")
+        st.header(f"Date: {selected_date} — {date_index + 1}/{len(date_options)}")
     with col_hdr_right:
-        if st.button("Newer ▶", key="inline_next_date", use_container_width=True, disabled=is_next_disabled):
-            if st.session_state['date_index'] > 0:
-                st.session_state['date_index'] -= 1
+        st.button("Newer ▶", key="inline_next_date", use_container_width=True, disabled=is_next_disabled, on_click=move_selected_date, args=(-1,))
         if is_next_disabled:
             st.caption("No newer dates available")
 
     selected_date = st.sidebar.selectbox(
         "Select Date",
         date_options,
-        index=st.session_state['date_index']
+        key="selected_date_widget"
     )
-    st.session_state['date_index'] = date_options.index(selected_date)
     st.sidebar.caption(f"Available dates: {len(date_options)}")
     with st.sidebar.expander("📅 All Available Dates", expanded=False):
         st.write(date_options)
