@@ -769,25 +769,8 @@ if df is not None:
             round(total_vals[i], 2)
         ])
     
-    # Map trace names to friendly names with color indicators
-    trace_names = {
-        'Solar': '☀️ Solar',
-        'Grid': '⚡ Grid',
-        'Load': '🏠 Load',
-        'Battery': '🔋 Battery'
-    }
-    
-    # Build custom hover template with bar name and value first, then all 4 values + total
-    custom_hover = (
-        "<b>Date: %{x}</b><br>" +
-        "Solar: <b>%{customdata[0]:.2f} kWh</b><br>" +
-        "Grid: <b>%{customdata[1]:.2f} kWh</b><br>" +
-        "Load: <b>%{customdata[2]:.2f} kWh</b><br>" +
-        "Battery: <b>%{customdata[3]:.2f} kWh</b><br>" +
-        "Total source energy: <b>%{customdata[4]:.2f} kWh</b>" +
-        "<extra></extra>"
-    )
-    
+    # Keep simple labels for the non-hovered series in the tooltip.
+    energy_labels = ["Solar", "Grid", "Load", "Battery"]
     # Create the bar chart with friendly column names
     fig_energy = px.bar(
         daily_energy_sorted, x='date', 
@@ -803,11 +786,18 @@ if df is not None:
         }
     )
     
-    # Apply custom hover to all traces
-    fig_energy.update_traces(
-        hovertemplate=custom_hover,
-        customdata=customdata_all
-    )
+    # Identify the bar under the pointer and show its own value first.
+    fig_energy.update_traces(customdata=customdata_all)
+    for current_index, trace in enumerate(fig_energy.data):
+        hover_lines = [
+            "<b>Date: %{x}</b>",
+            f"<b>{trace.name}: %{{y:.2f}} kWh</b>",
+        ]
+        for index, label in enumerate(energy_labels):
+            if index != current_index:
+                hover_lines.append(f"{label}: %{{customdata[{index}]:.2f}} kWh")
+        hover_lines.append("Total source energy: %{customdata[4]:.2f} kWh")
+        trace.hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
     fig_energy.update_layout(
         yaxis_title="Energy (kWh)",
         hovermode="closest",
