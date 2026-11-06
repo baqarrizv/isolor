@@ -213,7 +213,9 @@ if st.session_state.get("ui_theme") not in {"Dark", "Light"}:
     st.session_state["ui_theme"] = "Dark"
 ui_theme = st.session_state["ui_theme"]
 is_dark_theme = ui_theme == "Dark"
-pio.templates.default = "plotly_dark" if is_dark_theme else "plotly_white"
+plotly_template = "plotly_dark" if is_dark_theme else "plotly_white"
+pio.templates.default = plotly_template
+px.defaults.template = plotly_template
 
 theme_background = "#0e1117" if is_dark_theme else "#ffffff"
 theme_sidebar = "#151922" if is_dark_theme else "#f5f7fa"
@@ -689,7 +691,7 @@ if df is not None:
         )
         fig_pie.update_layout(dragmode=False)
         # Make chart responsive for mobile
-        st.plotly_chart(fig_pie, use_container_width=True, config={
+        st.plotly_chart(fig_pie, use_container_width=True, theme=None, config={
             'responsive': True,
             'displayModeBar': False,
             'scrollZoom': False,
@@ -720,6 +722,7 @@ if df is not None:
             st.plotly_chart(
                 fig_battery_voltage,
                 use_container_width=True,
+                theme=None,
                 config={"responsive": True, "displayModeBar": False, "scrollZoom": False},
             )
     
@@ -886,7 +889,7 @@ if df is not None:
         fig_load.update_layout(hovermode='closest', hoverdistance=-1, dragmode=False)
     
     # Make chart responsive for mobile
-    st.plotly_chart(fig_load, use_container_width=True, config={
+    st.plotly_chart(fig_load, use_container_width=True, theme=None, config={
         'responsive': True,
         'displayModeBar': False,
         'scrollZoom': False,
@@ -999,7 +1002,7 @@ if df is not None:
     fig_voltage.update_layout(hovermode='closest', hoverdistance=-1, dragmode=False)
     
     # Make chart responsive for mobile
-    st.plotly_chart(fig_voltage, use_container_width=True, config={
+    st.plotly_chart(fig_voltage, use_container_width=True, theme=None, config={
         'responsive': True,
         'displayModeBar': False,
         'scrollZoom': False,
@@ -1055,7 +1058,7 @@ if df is not None:
     fig_main.update_layout(hovermode='closest', hoverdistance=-1, dragmode=False)
     
     # Make chart responsive for mobile
-    st.plotly_chart(fig_main, use_container_width=True, config={
+    st.plotly_chart(fig_main, use_container_width=True, theme=None, config={
         'responsive': True,
         'displayModeBar': False,
         'scrollZoom': False,
@@ -1128,7 +1131,7 @@ if df is not None:
         trace.hovertemplate = f'<b>{mode_data["Mode"].iloc[i]}</b><br>Time: {mode_data["Hours_Display"].iloc[i]}<br>Records: {mode_data["Records"].iloc[i]}<extra></extra>'
     
     # Make chart responsive for mobile
-    st.plotly_chart(fig_mode, use_container_width=True, config={
+    st.plotly_chart(fig_mode, use_container_width=True, theme=None, config={
         'responsive': True,
         'displayModeBar': False,
         'scrollZoom': False,
@@ -1136,7 +1139,7 @@ if df is not None:
     })
 
     # Render after the selected-day mode chart, as requested.
-    st.plotly_chart(fig_energy, use_container_width=True, config={
+    st.plotly_chart(fig_energy, use_container_width=True, theme=None, config={
         'responsive': True,
         'displayModeBar': False,
         'scrollZoom': False,
@@ -1225,7 +1228,7 @@ if df is not None:
             color_discrete_map={'☀️ Solar': '#FFD700', '⚡ Grid': '#1E90FF', '❓ Other': '#888888'}
         )
         fig_charge_mode.update_layout(yaxis_title="Hours", dragmode=False)
-        st.plotly_chart(fig_charge_mode, use_container_width=True, config={
+        st.plotly_chart(fig_charge_mode, use_container_width=True, theme=None, config={
             'responsive': True,
             'displayModeBar': False,
             'scrollZoom': False,
@@ -1262,7 +1265,7 @@ if df is not None:
             )
             fig_charge_energy.update_traces(textposition='inside', textinfo='percent+label')
             fig_charge_energy.update_layout(dragmode=False)
-            st.plotly_chart(fig_charge_energy, use_container_width=True, config={
+            st.plotly_chart(fig_charge_energy, use_container_width=True, theme=None, config={
                 'responsive': True,
                 'displayModeBar': False,
                 'scrollZoom': False,
@@ -1443,7 +1446,7 @@ if df is not None:
                 }
             )
             fig_dual.update_layout(yaxis_title="Units", dragmode=False)
-            st.plotly_chart(fig_dual, use_container_width=True, config={
+            st.plotly_chart(fig_dual, use_container_width=True, theme=None, config={
                 'responsive': True,
                 'displayModeBar': False,
                 'scrollZoom': False,
@@ -1462,7 +1465,7 @@ if df is not None:
                 }
             )
             fig_battery_charge.update_layout(yaxis_title="Units", dragmode=False)
-            st.plotly_chart(fig_battery_charge, use_container_width=True, config={
+            st.plotly_chart(fig_battery_charge, use_container_width=True, theme=None, config={
                 'responsive': True,
                 'displayModeBar': False,
                 'scrollZoom': False,
