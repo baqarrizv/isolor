@@ -209,14 +209,10 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-ui_theme = st.radio(
-    "Theme",
-    ["🌙 Dark", "☀️ Light"],
-    horizontal=True,
-    key="ui_theme",
-    label_visibility="collapsed",
-)
-is_dark_theme = ui_theme == "🌙 Dark"
+if st.session_state.get("ui_theme") not in {"Dark", "Light"}:
+    st.session_state["ui_theme"] = "Dark"
+ui_theme = st.session_state["ui_theme"]
+is_dark_theme = ui_theme == "Dark"
 pio.templates.default = "plotly_dark" if is_dark_theme else "plotly_white"
 
 theme_background = "#0e1117" if is_dark_theme else "#ffffff"
@@ -296,16 +292,9 @@ st.markdown("""
         padding-bottom: 1rem;
     }
     
-    /* Sidebar styling */
-    section[data-testid="stSidebar"] {
-        width: 100% !important;
-    }
-    
-    
-    /* Keep Streamlit radio controls in their requested horizontal layout. */
+    /* Prevent long content from forcing columns wider than their container. */
     div[data-testid="column"] {
-        width: 100% !important;
-        margin-bottom: 0.5rem;
+        min-width: 0 !important;
     }
     /* Additional responsive helpers (CSS-only) */
     @media (max-width: 768px) {
@@ -313,10 +302,19 @@ st.markdown("""
             gap: 0.5rem !important;
             flex-wrap: wrap !important;
         }
+        div[data-testid="column"] {
+            width: 100% !important;
+            margin-bottom: 0.5rem;
+        }
+        section[data-testid="stSidebar"] {
+            width: min(85vw, 320px) !important;
+            max-width: 85vw !important;
+        }
         div[data-testid="stRadio"] [role="radiogroup"] {
             flex-direction: row !important;
             flex-wrap: wrap !important;
             gap: 0.5rem 1rem !important;
+            justify-content: flex-start !important;
         }
         div[data-testid="stPlotlyChart"] {
             min-height: 320px !important;
@@ -326,64 +324,11 @@ st.markdown("""
 
 """, unsafe_allow_html=True)
 
-# Floating Zoom Toggle Button (injected into main DOM so it stays fixed while scrolling)
-st.markdown(
-        """
-        <div id="floating-zoom-container" style="position:fixed;top:12px;right:12px;z-index:99999;">
-            <button id="floating-zoom-btn" style="background:#4CAF50;color:white;border:none;padding:10px 14px;border-radius:6px;font-size:14px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.2)">Enable Zoom</button>
-        </div>
-        <script>
-        (function(){
-            var enabled = false;
-            var btn = document.getElementById('floating-zoom-btn');
-            function setState(on){
-                enabled = !!on;
-                if(enabled){
-                    btn.innerText = 'Disable Zoom';
-                    btn.style.background = '#f44336';
-                } else {
-                    btn.innerText = 'Enable Zoom';
-                    btn.style.background = '#4CAF50';
-                }
-            }
-
-            function toggleZoom(){
-                var plots = document.getElementsByClassName('js-plotly-plot');
-                if(!plots || plots.length === 0){
-                    console.warn('No Plotly plots found on page yet.');
-                    setState(false);
-                    return;
-                }
-                var gd = plots[plots.length - 1]; // last rendered plot
-                if(typeof Plotly === 'undefined' || !gd){
-                    console.warn('Plotly not ready or graph not found.');
-                    return;
-                }
-                enabled = !enabled;
-                if(enabled){
-                    Plotly.relayout(gd, {'dragmode': 'zoom'});
-                } else {
-                    Plotly.relayout(gd, {'dragmode': false});
-                }
-                setState(enabled);
-            }
-
-            // Attach click
-            if(btn){
-                btn.addEventListener('click', function(e){
-                    toggleZoom();
-                });
-            }
-
-            // Expose toggle to window (optional) so other scripts can call it
-            window.streamlitFloatingZoomToggle = toggleZoom;
-        })();
-        </script>
-        """,
-        unsafe_allow_html=True,
-)
-
-st.title("🔋 Inverter Analytics")
+title_col, theme_col = st.columns([3, 1])
+with title_col:
+    st.title("🔋 Inverter Analytics")
+with theme_col:
+    st.radio("Theme", ["Dark", "Light"], horizontal=True, key="ui_theme")
 st.markdown("Upload your inverter Excel file or use a Google Sheet link and get detailed hourly & daily insights.")
 
 # Initialize session state for dataframe and date options
