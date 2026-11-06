@@ -248,24 +248,22 @@ st.markdown("""
         width: 100% !important;
     }
     
-    /* Radio button horizontal on mobile */
-    div[data-testid="stRadio"] > div {
-        flex-direction: column;
-    }
     
-    /* Keep columns horizontal when possible, but keep radio items stacked for readability */
+    /* Keep Streamlit radio controls in their requested horizontal layout. */
     div[data-testid="column"] {
         width: 100% !important;
         margin-bottom: 0.5rem;
-    }
-    div[data-testid="stRadio"] > div {
-        flex-direction: column !important;
     }
     /* Additional responsive helpers (CSS-only) */
     @media (max-width: 768px) {
         [data-testid="stHorizontalBlock"] {
             gap: 0.5rem !important;
             flex-wrap: wrap !important;
+        }
+        div[data-testid="stRadio"] [role="radiogroup"] {
+            flex-direction: row !important;
+            flex-wrap: wrap !important;
+            gap: 0.5rem 1rem !important;
         }
         div[data-testid="stPlotlyChart"] {
             min-height: 320px !important;
@@ -746,12 +744,12 @@ if df is not None:
     # Build custom hover template with bar name and value first, then all 4 values + total
     custom_hover = (
         "<b>Date: %{x}</b><br>" +
-        "<i>%{fullData.name}</i>: <b>%{y:.2f} kWh</b><br>" +
-        "------<br>" +
         "Solar: <b>%{customdata[0]:.2f} kWh</b><br>" +
         "Grid: <b>%{customdata[1]:.2f} kWh</b><br>" +
+        "Load: <b>%{customdata[2]:.2f} kWh</b><br>" +
         "Battery: <b>%{customdata[3]:.2f} kWh</b><br>" +
-        "Load: <b>%{customdata[2]:.2f} kWh</b><br>"
+        "Total source energy: <b>%{customdata[4]:.2f} kWh</b>" +
+        "<extra></extra>"
     )
     
     # Create the bar chart with friendly column names
