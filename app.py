@@ -822,10 +822,7 @@ if df is not None:
         st.warning("No data available for the selected date.")
         st.stop()
 
-    st.header(f"📅 Analysis for {selected_date}")
-    
     # Option to view load as hourly average or row-wise
-    st.caption("Load means how much power the connected appliances are drawing. Choose a simple hourly summary or inspect every reading.")
     load_view_mode = st.radio("Load chart detail", ["Hourly average", "Every reading"], horizontal=True, index=1)
     
     # Sort data by datetime for row-wise view
