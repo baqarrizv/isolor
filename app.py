@@ -709,6 +709,32 @@ if df is not None:
             'doubleClick': 'reset',
             'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
         })
+
+    # Show the selected day's battery voltage directly after the energy-source chart.
+    battery_voltage_col = next(
+        (column for column in df.columns if "battery_voltage" in column.lower()),
+        None,
+    )
+    if battery_voltage_col:
+        battery_day = df.loc[df["date"] == selected_date].sort_values(datetime_col)
+        if not battery_day.empty:
+            fig_battery_voltage = px.line(
+                battery_day,
+                x=datetime_col,
+                y=battery_voltage_col,
+                title="Battery voltage during the selected day",
+                markers=True,
+                labels={battery_voltage_col: "Battery voltage (V)", datetime_col: "Time"},
+            )
+            fig_battery_voltage.update_traces(
+                hovertemplate="Time: %{x}<br>Battery voltage: %{y:.2f} V<extra></extra>"
+            )
+            fig_battery_voltage.update_layout(dragmode=False)
+            st.plotly_chart(
+                fig_battery_voltage,
+                use_container_width=True,
+                config={"responsive": True, "displayModeBar": False, "scrollZoom": False},
+            )
     
     # ===== DAILY ENERGY CHART (NO EXPANDER - DIRECT DISPLAY) =====
     # Prepare data for custom hover - show all 4 values for the hovered date
@@ -789,13 +815,6 @@ if df is not None:
         dragmode=False
     )
     # Make chart responsive for mobile
-    st.plotly_chart(fig_energy, use_container_width=True, config={
-        'responsive': True,
-        'displayModeBar': False,
-        'scrollZoom': False,
-        'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
-    })
-    
     # ===== ANALYSIS FOR SELECTED DATE (START) =====
     day_df = df[df["date"] == selected_date]
 
@@ -1013,63 +1032,6 @@ if df is not None:
         'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
     })
     
-    # Battery Voltage Graph (DIRECT DISPLAY - NO EXPANDER)
-    battery_col = None
-    for col in day_df_sorted.columns:
-        if 'battery_voltage' in col.lower():
-            battery_col = col
-            break
-    
-    if battery_col:
-        # Create battery chart with custom hover (like Grid Voltage chart)
-        fig_battery = px.line(day_df_sorted, x=datetime_col, y=battery_col,
-                             title="Battery Voltage Trend",
-                             markers=True)
-        
-        # Build custom hover with key params - battery voltage value first, then others
-        battery_hover = f"<b>Battery Voltage</b>: %{{y:.2f}} V<br>"
-        
-        # Add other columns to hover (excluding battery_col and datetime_col)
-        hover_cols_for_battery = []
-        for col in display_cols:
-            col_lower = col.lower() if isinstance(col, str) else ''
-            battery_col_lower = battery_col.lower() if isinstance(battery_col, str) else ''
-            if col_lower != battery_col_lower and col not in [datetime_col, 'date', 'hour']:
-                hover_cols_for_battery.append(col)
-        
-        for i, col in enumerate(hover_cols_for_battery):
-            friendly = custom_labels.get(col, col)
-            battery_hover += f"<b>{friendly}</b>: %{{customdata[{i}]}}<br>"
-        
-        if work_mode_col:
-            battery_hover += f"<b>Work Mode</b>: %{{customdata[{len(hover_cols_for_battery)}]}}<br>"
-        battery_hover += f"<b>Time</b>: %{{x}}"
-        
-        # Prepare customdata
-        battery_customdata = []
-        for _, row in day_df_sorted.iterrows():
-            row_data = []
-            for col in hover_cols_for_battery:
-                val = row[col] if pd.notna(row[col]) else 0
-                row_data.append(f"{val:.2f}")
-            if work_mode_col:
-                row_data.append(str(row[work_mode_col]))
-            battery_customdata.append(tuple(row_data))
-        
-        fig_battery.update_traces(hovertemplate=battery_hover, customdata=battery_customdata)
-        fig_battery.update_layout(hovermode='closest', hoverdistance=-1, dragmode=False)
-        
-        # Make chart responsive for mobile
-        st.plotly_chart(fig_battery, use_container_width=True, config={
-            'responsive': True,
-            'displayModeBar': False,
-            'scrollZoom': False,
-            'doubleClick': 'reset',
-            'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
-        })
-    else:
-        st.warning("Battery Voltage column not found")
-
     # AC Output Active Power Total (DIRECT DISPLAY - NO EXPANDER)
     main_col = None
     for col in display_cols:
@@ -1193,6 +1155,14 @@ if df is not None:
     
     # Make chart responsive for mobile
     st.plotly_chart(fig_mode, use_container_width=True, config={
+        'responsive': True,
+        'displayModeBar': False,
+        'scrollZoom': False,
+        'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
+    })
+
+    # Render after the selected-day mode chart, as requested.
+    st.plotly_chart(fig_energy, use_container_width=True, config={
         'responsive': True,
         'displayModeBar': False,
         'scrollZoom': False,
