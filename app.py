@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
+import plotly.io as pio
 import requests
 import re
 import os
@@ -207,6 +208,47 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
+
+ui_theme = st.radio(
+    "Theme",
+    ["🌙 Dark", "☀️ Light"],
+    horizontal=True,
+    key="ui_theme",
+    label_visibility="collapsed",
+)
+is_dark_theme = ui_theme == "🌙 Dark"
+pio.templates.default = "plotly_dark" if is_dark_theme else "plotly_white"
+
+theme_background = "#0e1117" if is_dark_theme else "#ffffff"
+theme_sidebar = "#151922" if is_dark_theme else "#f5f7fa"
+theme_text = "#fafafa" if is_dark_theme else "#202124"
+theme_input = "#202632" if is_dark_theme else "#ffffff"
+theme_css = """
+<style>
+.stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
+    background-color: __BACKGROUND__ !important;
+    color: __TEXT__ !important;
+}
+section[data-testid="stSidebar"] {
+    background-color: __SIDEBAR__ !important;
+}
+[data-testid="stMarkdownContainer"], [data-testid="stMetricLabel"],
+[data-testid="stMetricValue"], label, h1, h2, h3, p {
+    color: __TEXT__;
+}
+input, textarea, [data-baseweb="select"] > div {
+    background-color: __INPUT__ !important;
+    color: __TEXT__ !important;
+}
+</style>
+"""
+theme_css = (
+    theme_css.replace("__BACKGROUND__", theme_background)
+    .replace("__SIDEBAR__", theme_sidebar)
+    .replace("__INPUT__", theme_input)
+    .replace("__TEXT__", theme_text)
+)
+st.markdown(theme_css, unsafe_allow_html=True)
 
 # Custom CSS for mobile responsiveness
 st.markdown("""
@@ -1138,7 +1180,7 @@ if df is not None:
     for i, trace in enumerate(fig_mode.data):
         trace.text = [mode_data['Hours_Display'].iloc[i]]
         trace.textposition = 'outside'
-        trace.hovertemplate = f'<b>{mode_data["Mode"].iloc[i]}</b><br>Time: {mode_data["Hours_Display"].iloc[i]}<br>Records: {mode_data["Records"].iloc[i]}'
+        trace.hovertemplate = f'<b>{mode_data["Mode"].iloc[i]}</b><br>Time: {mode_data["Hours_Display"].iloc[i]}<br>Records: {mode_data["Records"].iloc[i]}<extra></extra>'
     
     # Make chart responsive for mobile
     st.plotly_chart(fig_mode, use_container_width=True, config={
