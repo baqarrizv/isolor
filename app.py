@@ -8,6 +8,20 @@ import os
 from io import BytesIO
 
 
+@st.cache_data(ttl=300, max_entries=3, show_spinner=False)
+def read_excel_cached(file_bytes):
+    """Reuse parsed workbook data across Streamlit reruns for five minutes."""
+    return pd.read_excel(BytesIO(file_bytes))
+
+
+@st.cache_data(ttl=300, max_entries=3, show_spinner=False)
+def download_bytes_cached(url):
+    """Reuse downloaded source bytes across reruns; refresh at most every five minutes."""
+    response = requests.get(url, timeout=20)
+    response.raise_for_status()
+    return response.content
+
+
 def get_drive_file_id_from_string(token):
     if not token:
         return None
@@ -352,11 +366,8 @@ with st.expander("📊 Data Source", expanded=False):
         try:
             with st.spinner("Loading Google Sheet..."):
                 # Fetch the sheet
-                response = requests.get(sheet_url)
-                response.raise_for_status()
-                
-                # Read Excel from response
-                st.session_state["df"] = pd.read_excel(BytesIO(response.content))
+                sheet_bytes = download_bytes_cached(sheet_url)
+                st.session_state["df"] = read_excel_cached(sheet_bytes)
             st.success("Google Sheet Loaded Successfully ✅")
         except Exception as e:
             st.error(f"⚠️ Error loading Google Sheet: {str(e)}")
@@ -405,9 +416,8 @@ with st.expander("📊 Data Source", expanded=False):
 
                     if file_id:
                         uc = f"https://drive.google.com/uc?export=download&id={file_id}"
-                        resp = requests.get(uc)
-                        resp.raise_for_status()
-                        st.session_state["df"] = pd.read_excel(BytesIO(resp.content))
+                        drive_bytes = download_bytes_cached(uc)
+                        st.session_state["df"] = read_excel_cached(drive_bytes)
                         st.success("Drive file loaded successfully ✅")
                     elif filename and folder_url:
                         st.error("Could not locate the file id from the shared folder page. Please provide a direct shared file link or file id, or use the listing below to pick a file.")
@@ -434,9 +444,8 @@ with st.expander("📊 Data Source", expanded=False):
                         try:
                             with st.spinner("Loading selected Drive file..."):
                                 uc = f"https://drive.google.com/uc?export=download&id={selected_fid}"
-                                resp = requests.get(uc)
-                                resp.raise_for_status()
-                                st.session_state["df"] = pd.read_excel(BytesIO(resp.content))
+                                drive_bytes = download_bytes_cached(uc)
+                                st.session_state["df"] = read_excel_cached(drive_bytes)
                             st.success(f"Loaded: {selected_name or selected_fid} ✅")
                         except Exception as e:
                             st.error(f"Failed to load selected file: {e}")
@@ -449,7 +458,7 @@ with st.expander("📊 Data Source", expanded=False):
         if uploaded_file is not None:
             try:
                 with st.spinner(f"Loading uploaded file: {uploaded_file.name}..."):
-                    st.session_state["df"] = pd.read_excel(uploaded_file)
+                    st.session_state["df"] = read_excel_cached(uploaded_file.getvalue())
                 st.success(f"Loaded uploaded file: {uploaded_file.name} ✅")
             except Exception as e:
                 st.error(f"Error reading uploaded file: {e}")
@@ -459,7 +468,8 @@ with st.expander("📊 Data Source", expanded=False):
             if os.path.exists(local_file):
                 try:
                     with st.spinner(f"Loading local file: {local_file}..."):
-                        st.session_state["df"] = pd.read_excel(local_file)
+                        with open(local_file, "rb") as local_workbook:
+                            st.session_state["df"] = read_excel_cached(local_workbook.read())
                     st.success(f"Loaded local file: {local_file} ✅")
                 except Exception as e:
                     st.warning(f"Could not load local file: {e}")
@@ -511,11 +521,11 @@ if df is not None:
     # ===== SIDEBAR =====
     # First: Calculation Method
     calc_method = st.sidebar.radio(
-        "Calculation Method:",
-        ["Fixed 5 Minutes", "Average Based"],
+        "How should energy use be estimated?",
+        ["Assume 5 min per row", "Use timestamps in file"],
         index=0,
-        horizontal=True,
-        help="Fixed 5 Minutes: Uses 5 min per row. Average Based: Auto-detects time interval from data (default)."
+        horizontal=False,
+        help="Choose how much time each spreadsheet row represents. The timestamp option uses the average gap between readings."
     )
     
     # Second: Select Date
@@ -575,9 +585,9 @@ if df is not None:
         df_calc = df.copy()
         df_calc = df_calc.fillna(0)
         
-        if calc_method == "Fixed 5 Minutes":
+        if calc_method == "Assume 5 min per row":
             time_per_row_hours = 5 / 60  # 0.0833 hours
-            st.sidebar.write(f"**Debug:** Each row = 5 minutes = {time_per_row_hours:.4f} hours")
+            st.sidebar.caption("Energy estimate: each row counts as 5 minutes.")
         else:
             df_calc = df_calc.sort_values(datetime_col)
             time_diffs = df_calc[datetime_col].diff().dropna()
@@ -585,10 +595,10 @@ if df is not None:
             if len(time_diffs) > 0:
                 avg_minutes = time_diffs.mean().total_seconds() / 60
                 time_per_row_hours = avg_minutes / 60
-                st.sidebar.write(f"**Debug:** Auto-detected avg interval = {avg_minutes:.2f} min = {time_per_row_hours:.4f} hours")
+                st.sidebar.caption(f"Energy estimate: about {avg_minutes:.1f} minutes per reading, based on timestamps.")
             else:
                 time_per_row_hours = 5 / 60
-                st.sidebar.write(f"**Debug:** Could not detect, using fallback = 5 min = {time_per_row_hours:.4f} hours")
+                st.sidebar.caption("Timestamps unavailable; using 5 minutes per row.")
         
         # Energy (kWh) = Power (W) × time_per_row_hours / 1000
         df_calc['solar_kwh'] = df_calc['pv_input_power_1'] * time_per_row_hours / 1000
@@ -606,12 +616,7 @@ if df is not None:
         )
         df_calc.loc[battery_condition, 'battery_kwh'] = df_calc.loc[battery_condition, 'ac_output_active_power_total'] * time_per_row_hours / 1000
         
-        total_solar_power = df_calc['pv_input_power_1'].sum()
         total_solar_kwh = df_calc['solar_kwh'].sum()
-        
-        st.sidebar.write(f"**Raw Solar Power Sum:** {total_solar_power} W")
-        st.sidebar.write(f"**Solar kWh ({calc_method}):** {total_solar_kwh:.2f} kWh")
-        st.sidebar.write(f"**Calculation:** {total_solar_power} × {time_per_row_hours:.4f} / 1000 = {total_solar_kwh:.2f} kWh")
         
         # Group by date
         daily = df_calc.groupby('date').agg({
@@ -656,15 +661,16 @@ if df is not None:
         # Grid portion of load = total load - battery portion
         grid_portion_load = selected_day['load_kwh'] - selected_day['battery_kwh']
         
+        st.caption("Energy is shown in kWh (units). Solar and grid are energy from each source; load is what the home used.")
         col_a, col_b, col_c, col_d, col_e = st.columns(5)
-        col_a.metric("☀️ Solar", f"{selected_day['solar_kwh']:.2f}")
-        col_b.metric("⚡ Grid", f"{selected_day['utility_kwh']:.2f}")
-        col_c.metric("🔋 Battery", f"{selected_day['battery_kwh']:.2f}")
-        col_d.metric("🏠 Total Load", f"{selected_day['load_kwh']:.2f}")
+        col_a.metric("☀️ Solar energy", f"{selected_day['solar_kwh']:.2f} kWh", help="Estimated energy received from solar panels during this day.")
+        col_b.metric("⚡ Grid energy", f"{selected_day['utility_kwh']:.2f} kWh", help="Estimated energy received from the electricity grid during this day.")
+        col_c.metric("🔋 Battery energy", f"{selected_day['battery_kwh']:.2f} kWh", help="Estimated load energy supplied by the battery.")
+        col_d.metric("🏠 Home energy use", f"{selected_day['load_kwh']:.2f} kWh", help="Estimated energy used by the connected load during this day.")
         
         # Total = Solar + Grid + Battery (all power sources combined)
         total_all = selected_day['solar_kwh'] + selected_day['utility_kwh'] + selected_day['battery_kwh']
-        col_e.metric("⚡ Total (Main)", f"{total_all:.2f}")
+        col_e.metric("⚡ Source energy total", f"{total_all:.2f} kWh", help="Solar + grid + battery energy. Battery energy may overlap with the load figure.")
         
         # Calculate percentages - now including battery (round to 2 decimals)
         source_df = pd.DataFrame({
@@ -752,9 +758,9 @@ if df is not None:
     fig_energy = px.bar(
         daily_energy_sorted, x='date', 
         y=['☀️ Solar', '⚡ Grid', '🏠 Load', '🔋 Battery'],
-        title="Daily Energy: Solar vs Grid vs Load vs Battery (units)",
+        title="Daily energy: solar, grid, home use and battery",
         barmode='group',
-        labels={'date': 'Date', 'value': 'Units (kWh)', 'variable': 'Type'},
+        labels={'date': 'Date', 'value': 'Energy (kWh)', 'variable': 'Source or use'},
         color_discrete_map={
             '☀️ Solar': '#FFD700',
             '⚡ Grid': '#1E90FF',
@@ -769,7 +775,7 @@ if df is not None:
         customdata=customdata_all
     )
     fig_energy.update_layout(
-        yaxis_title="Units (kWh)",
+        yaxis_title="Energy (kWh)",
         hovermode="closest",
         hoverdistance=15,
         dragmode=False
@@ -792,7 +798,8 @@ if df is not None:
     st.header(f"📅 Analysis for {selected_date}")
     
     # Option to view load as hourly average or row-wise
-    load_view_mode = st.radio("Load View Mode:", ["Hourly Average", "Row-wise (Every Entry)"], horizontal=True, index=1)
+    st.caption("Load means how much power the connected appliances are drawing. Choose a simple hourly summary or inspect every reading.")
+    load_view_mode = st.radio("Load chart detail", ["Hourly average", "Every reading"], horizontal=True, index=1)
     
     # Sort data by datetime for row-wise view
     day_df_sorted_load = day_df.sort_values(datetime_col).reset_index(drop=True)
@@ -844,14 +851,14 @@ if df is not None:
     }
     
     # Hourly Load
-    if load_view_mode == "Hourly Average":
+    if load_view_mode == "Hourly average":
         hourly_load = day_df.groupby("hour")[load_col].mean().reset_index()
-        fig_load = px.line(hourly_load, x="hour", y=load_col, markers=True, title="Hourly Load Output % Wise (Average)")
+        fig_load = px.line(hourly_load, x="hour", y=load_col, markers=True, title="Average home power use by hour")
     else:
         # Row-wise view - show every data point sorted by time with hover
         row_load = day_df_sorted_load[[datetime_col, load_col]].copy()
-        fig_load = px.line(day_df_sorted_load, x=datetime_col, y=load_col, markers=True, title="Load Output % Wise - Every Entry (Row-wise)")
-        fig_load.update_layout(xaxis_title="Time", yaxis_title=f"Load %")
+        fig_load = px.line(day_df_sorted_load, x=datetime_col, y=load_col, markers=True, title="Home power use at every reading")
+        fig_load.update_layout(xaxis_title="Time", yaxis_title="Home load (%)")
         
         # Build custom hover with key params for row-wise view
         load_hover = f"<b>Load %</b>: %{{y:.2f}}<br>"
@@ -1184,10 +1191,11 @@ if df is not None:
         'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
     })
     
+    st.caption("These times estimate how long each power source was active, based on the readings in the file.")
     col1, col2, col3 = st.columns(3)
-    col1.metric("☀️ Solar Time", f"{int(solar_time_hours)}h {int((solar_time_hours % 1) * 60)}m")
-    col2.metric("⚡ Grid Time", f"{int(grid_time_hours)}h {int((grid_time_hours % 1) * 60)}m")
-    col3.metric("🔋 Battery Time", f"{int(battery_time_hours)}h {int((battery_time_hours % 1) * 60)}m")
+    col1.metric("☀️ Solar power time", f"{int(solar_time_hours)}h {int((solar_time_hours % 1) * 60)}m", help="Estimated time the inverter was using solar power.")
+    col2.metric("⚡ Grid power time", f"{int(grid_time_hours)}h {int((grid_time_hours % 1) * 60)}m", help="Estimated time the inverter was using grid power.")
+    col3.metric("🔋 Battery power time", f"{int(battery_time_hours)}h {int((battery_time_hours % 1) * 60)}m", help="Estimated time the load was being supplied by the battery.")
 
     # ===== BATTERY CHARGING ANALYSIS - Solar vs Grid =====
     st.subheader("🔋 Battery Charging Analysis - Voltages Used for Charging")
@@ -1684,15 +1692,14 @@ if df is not None:
             (1 - (battery_mode_time / len(day_df))) * 30
         )
 
+        st.caption("A rough summary of this day's readings, not a diagnosis of inverter health or efficiency.")
         st.progress(int(performance_score))
-        st.write(f"**Score: {round(performance_score,2)} / 100**")
-        
-        if performance_score >= 70:
-            st.success("✅ Great performance! Inverter is working efficiently.")
-        elif performance_score >= 40:
-            st.warning("⚠️ Average performance. Check battery charging.")
-        else:
-            st.error("❌ Poor performance. Needs attention!")
+        st.write(f"**Reading-based indicator: {round(performance_score, 1)} / 100**")
+        st.info(
+            "How it is calculated: 40% from readings at or above 28.5 V, "
+            "30% from time on grid, and 30% from time not on battery. "
+            "A higher value only reflects these rules; it does not confirm the inverter is healthy."
+        )
 
     # Raw Data
     with st.expander("View Raw Data", expanded=False):
