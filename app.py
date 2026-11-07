@@ -217,14 +217,19 @@ plotly_template = "plotly_dark" if is_dark_theme else "plotly_white"
 pio.templates.default = plotly_template
 px.defaults.template = plotly_template
 
-theme_background = "#0e1117" if is_dark_theme else "#ffffff"
-theme_sidebar = "#151922" if is_dark_theme else "#f5f7fa"
-theme_text = "#fafafa" if is_dark_theme else "#202124"
-theme_surface = "#1b202b" if is_dark_theme else "#f5f7fa"
-theme_input = "#202632" if is_dark_theme else "#ffffff"
-theme_border = "#3a4250" if is_dark_theme else "#d7dce2"
-theme_disabled_background = "#303642" if is_dark_theme else "#e8ebef"
-theme_disabled_text = "#aab2bf" if is_dark_theme else "#5f6368"
+theme_background = "#0b1220" if is_dark_theme else "#f3f6fb"
+theme_sidebar = "#101a2a" if is_dark_theme else "#eaf0f7"
+theme_text = "#edf3fb" if is_dark_theme else "#172435"
+theme_muted_text = "#a6b3c5" if is_dark_theme else "#617187"
+theme_surface = "#141f30" if is_dark_theme else "#ffffff"
+theme_input = "#101a29" if is_dark_theme else "#ffffff"
+theme_border = "#2b3a50" if is_dark_theme else "#dce4ee"
+theme_accent = "#087f70"
+theme_accent_hover = "#06695e"
+theme_disabled_background = "#263348" if is_dark_theme else "#e4eaf2"
+theme_disabled_text = "#a6b3c5" if is_dark_theme else "#617187"
+theme_success_background = "#12382f" if is_dark_theme else "#e5f6ef"
+theme_success_text = "#79e2bc" if is_dark_theme else "#176b4d"
 theme_css = """
 <style>
 :root {
@@ -232,44 +237,102 @@ theme_css = """
     --background-color: __BACKGROUND__;
     --secondary-background-color: __SIDEBAR__;
     --text-color: __TEXT__;
-    --primary-color: #4f8bf9;
+    --primary-color: __ACCENT__;
+    --font: "Inter", "Aptos", "Segoe UI", sans-serif;
 }
-.stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
+.stApp, [data-testid="stAppViewContainer"] {
     background-color: __BACKGROUND__ !important;
     color: __TEXT__ !important;
+    font-family: var(--font) !important;
+}
+[data-testid="stHeader"] {
+    background: transparent !important;
 }
 section[data-testid="stSidebar"], [data-testid="stSidebarContent"] {
     background-color: __SIDEBAR__ !important;
 }
-[data-testid="stAppViewContainer"] *, section[data-testid="stSidebar"] * {
+[data-testid="stMarkdownContainer"], [data-testid="stMetricLabel"],
+[data-testid="stMetricValue"], label, h1, h2, h3, p {
     color: __TEXT__;
+    font-family: var(--font) !important;
+}
+h1, h2, h3 {
+    letter-spacing: -0.025em;
+}
+h1 { font-weight: 750 !important; }
+[data-testid="stCaptionContainer"], [data-testid="stHelp"] {
+    color: __MUTED_TEXT__ !important;
 }
 [data-testid="stVerticalBlockBorderWrapper"], [data-testid="stExpander"],
 [data-testid="stMetric"], [data-testid="stDataFrame"],
 [data-testid="stTable"] {
     background-color: __SURFACE__;
     border-color: __BORDER__;
+    border-radius: 14px;
+}
+[data-testid="stMetric"] {
+    padding: 1rem 1.1rem;
+    border: 1px solid __BORDER__;
+    box-shadow: 0 5px 18px rgba(10, 25, 45, 0.08);
+    transition: transform 160ms ease, box-shadow 160ms ease;
+}
+[data-testid="stMetric"]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 9px 24px rgba(10, 25, 45, 0.14);
+}
+[data-testid="stMetricValue"] {
+    font-weight: 700 !important;
 }
 input, textarea, [data-baseweb="select"] > div,
 [data-baseweb="input"] > div, [data-baseweb="textarea"] > div {
     background-color: __INPUT__ !important;
     color: __TEXT__ !important;
     border-color: __BORDER__ !important;
+    border-radius: 10px !important;
 }
-button, [data-testid="stDownloadButton"] button,
-[data-testid="stFileUploader"] section {
-    border-color: __BORDER__ !important;
+input[type="radio"], input[type="checkbox"] {
+    accent-color: __ACCENT__ !important;
+}
+[data-testid="stExpander"] {
+    border: 1px solid __BORDER__;
+    overflow: hidden;
+}
+[data-testid="stButton"] button, [data-testid="stDownloadButton"] button {
+    border: 1px solid __ACCENT__ !important;
+    border-radius: 10px !important;
+    background: __ACCENT__ !important;
+    color: #ffffff !important;
+    font-weight: 650 !important;
+    transition: transform 150ms ease, filter 150ms ease;
+}
+[data-testid="stButton"] button:hover, [data-testid="stDownloadButton"] button:hover {
+    background: __ACCENT_HOVER__ !important;
+    border-color: __ACCENT_HOVER__ !important;
+    transform: translateY(-1px);
 }
 [data-testid="stButton"] button:disabled {
     background-color: __DISABLED_BACKGROUND__ !important;
+    border-color: __BORDER__ !important;
     color: __DISABLED_TEXT__ !important;
     opacity: 1 !important;
+    transform: none !important;
 }
-[data-testid="stAlert"] *, [data-testid="stAlert"] p {
-    color: #ffffff !important;
+[data-testid="stAlert"][kind="success"] {
+    background-color: __SUCCESS_BACKGROUND__ !important;
+    border-radius: 12px;
 }
-[data-testid="stCaptionContainer"], [data-testid="stHelp"] {
-    color: __TEXT__ !important;
+[data-testid="stAlert"][kind="success"] * {
+    color: __SUCCESS_TEXT__ !important;
+}
+[data-testid="stFileUploader"] section {
+    border-color: __BORDER__ !important;
+    border-radius: 12px !important;
+}
+@media (prefers-reduced-motion: reduce) {
+    [data-testid="stMetric"], [data-testid="stButton"] button,
+    [data-testid="stDownloadButton"] button {
+        transition: none !important;
+    }
 }
 </style>
 """
@@ -280,8 +343,13 @@ theme_css = (
     .replace("__INPUT__", theme_input)
     .replace("__TEXT__", theme_text)
     .replace("__BORDER__", theme_border)
+    .replace("__ACCENT__", theme_accent)
+    .replace("__ACCENT_HOVER__", theme_accent_hover)
+    .replace("__MUTED_TEXT__", theme_muted_text)
     .replace("__DISABLED_BACKGROUND__", theme_disabled_background)
     .replace("__DISABLED_TEXT__", theme_disabled_text)
+    .replace("__SUCCESS_BACKGROUND__", theme_success_background)
+    .replace("__SUCCESS_TEXT__", theme_success_text)
     .replace("__COLOR_SCHEME__", "dark" if is_dark_theme else "light")
 )
 st.markdown(theme_css, unsafe_allow_html=True)
