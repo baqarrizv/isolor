@@ -220,22 +220,55 @@ px.defaults.template = plotly_template
 theme_background = "#0e1117" if is_dark_theme else "#ffffff"
 theme_sidebar = "#151922" if is_dark_theme else "#f5f7fa"
 theme_text = "#fafafa" if is_dark_theme else "#202124"
+theme_surface = "#1b202b" if is_dark_theme else "#f5f7fa"
 theme_input = "#202632" if is_dark_theme else "#ffffff"
+theme_border = "#3a4250" if is_dark_theme else "#d7dce2"
+theme_disabled_background = "#303642" if is_dark_theme else "#e8ebef"
+theme_disabled_text = "#aab2bf" if is_dark_theme else "#5f6368"
 theme_css = """
 <style>
+:root {
+    color-scheme: __COLOR_SCHEME__;
+    --background-color: __BACKGROUND__;
+    --secondary-background-color: __SIDEBAR__;
+    --text-color: __TEXT__;
+    --primary-color: #4f8bf9;
+}
 .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
     background-color: __BACKGROUND__ !important;
     color: __TEXT__ !important;
 }
-section[data-testid="stSidebar"] {
+section[data-testid="stSidebar"], [data-testid="stSidebarContent"] {
     background-color: __SIDEBAR__ !important;
 }
-[data-testid="stMarkdownContainer"], [data-testid="stMetricLabel"],
-[data-testid="stMetricValue"], label, h1, h2, h3, p {
+[data-testid="stAppViewContainer"] *, section[data-testid="stSidebar"] * {
     color: __TEXT__;
 }
-input, textarea, [data-baseweb="select"] > div {
+[data-testid="stVerticalBlockBorderWrapper"], [data-testid="stExpander"],
+[data-testid="stMetric"], [data-testid="stDataFrame"],
+[data-testid="stTable"] {
+    background-color: __SURFACE__;
+    border-color: __BORDER__;
+}
+input, textarea, [data-baseweb="select"] > div,
+[data-baseweb="input"] > div, [data-baseweb="textarea"] > div {
     background-color: __INPUT__ !important;
+    color: __TEXT__ !important;
+    border-color: __BORDER__ !important;
+}
+button, [data-testid="stDownloadButton"] button,
+[data-testid="stFileUploader"] section {
+    border-color: __BORDER__ !important;
+}
+[data-testid="stButton"] button:disabled {
+    background-color: __DISABLED_BACKGROUND__ !important;
+    color: __DISABLED_TEXT__ !important;
+    opacity: 1 !important;
+}
+[data-testid="stAlert"] *, [data-testid="stAlert"] p {
+    color: #ffffff !important;
+}
+[data-testid="stCaptionContainer"], [data-testid="stHelp"] {
     color: __TEXT__ !important;
 }
 </style>
@@ -243,8 +276,13 @@ input, textarea, [data-baseweb="select"] > div {
 theme_css = (
     theme_css.replace("__BACKGROUND__", theme_background)
     .replace("__SIDEBAR__", theme_sidebar)
+    .replace("__SURFACE__", theme_surface)
     .replace("__INPUT__", theme_input)
     .replace("__TEXT__", theme_text)
+    .replace("__BORDER__", theme_border)
+    .replace("__DISABLED_BACKGROUND__", theme_disabled_background)
+    .replace("__DISABLED_TEXT__", theme_disabled_text)
+    .replace("__COLOR_SCHEME__", "dark" if is_dark_theme else "light")
 )
 st.markdown(theme_css, unsafe_allow_html=True)
 
