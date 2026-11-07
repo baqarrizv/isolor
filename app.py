@@ -718,6 +718,9 @@ if df is not None:
 
     st.markdown("""
     <style>
+        [data-testid="stHorizontalBlock"] h2 {
+            margin-top: -13px !important;
+        }
         .date-display {
             font-size: 24px;
             font-weight: 700;
@@ -1200,7 +1203,7 @@ if df is not None:
     
     # Create AC Output chart with custom hover (like Grid Voltage chart)
     fig_main = px.line(day_df_sorted, x=datetime_col, y=main_col,
-                       title="AC Output Active Power Total",
+                       title="AC Output Active Power Total (W)",
                        markers=True)
     
     # Build custom hover with key params - AC Output value first, then others
