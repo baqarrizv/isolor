@@ -259,7 +259,23 @@ section[data-testid="stSidebar"], [data-testid="stSidebarContent"] {
 h1, h2, h3 {
     letter-spacing: -0.025em;
 }
-h1 { font-weight: 750 !important; }
+h1 {
+    font-size: 2.3rem !important;
+    font-weight: 750 !important;
+    line-height: 1.15 !important;
+}
+h2 {
+    font-size: 1.55rem !important;
+    line-height: 1.25 !important;
+}
+h3 {
+    font-size: 1.2rem !important;
+    line-height: 1.3 !important;
+}
+p {
+    font-size: 1rem;
+    line-height: 1.55;
+}
 [data-testid="stCaptionContainer"], [data-testid="stHelp"] {
     color: __MUTED_TEXT__ !important;
 }
@@ -282,6 +298,11 @@ h1 { font-weight: 750 !important; }
 }
 [data-testid="stMetricValue"] {
     font-weight: 700 !important;
+    font-size: 1.65rem !important;
+    line-height: 1.2 !important;
+}
+[data-testid="stMetricValue"] * {
+    font-size: inherit !important;
 }
 input, textarea, [data-baseweb="select"] > div,
 [data-baseweb="input"] > div, [data-baseweb="textarea"] > div {
@@ -369,20 +390,39 @@ st.markdown("""
             min-width: 0 !important;
         }
 
-        .stTitle {
-            font-size: 1.5rem !important;
+        h1 {
+            font-size: 1.55rem !important;
+            line-height: 1.2 !important;
         }
-        .stHeader {
-            font-size: 1.2rem !important;
+        h2 {
+            font-size: 1.15rem !important;
+            line-height: 1.3 !important;
+        }
+        h3 {
+            font-size: 1rem !important;
+        }
+        p, label {
+            font-size: 0.9rem !important;
+            line-height: 1.45 !important;
         }
         div[data-testid="stMetric"] {
-            padding: 0.5rem !important;
+            padding: 0.65rem !important;
+            border-radius: 12px !important;
         }
         div[data-testid="stMetricLabel"] {
-            font-size: 0.85rem !important;
+            font-size: 0.8rem !important;
         }
         div[data-testid="stMetricValue"] {
-            font-size: 1rem !important;
+            font-size: clamp(1.05rem, 4.5vw, 1.3rem) !important;
+            line-height: 1.2 !important;
+        }
+        [data-testid="stButton"] button {
+            font-size: 0.9rem !important;
+            min-height: 2.6rem;
+        }
+        .block-container {
+            padding-left: 0.75rem !important;
+            padding-right: 0.75rem !important;
         }
     }
     
@@ -434,10 +474,10 @@ st.markdown("""
 
 title_col, theme_col = st.columns([3, 1])
 with title_col:
-    st.title("🔋 Inverter Analytics")
+    st.title("🔋 Inverter Energy Dashboard")
 with theme_col:
-    st.radio("Theme", ["Dark", "Light"], horizontal=True, key="ui_theme")
-st.markdown("Upload your inverter Excel file or use a Google Sheet link and get detailed hourly & daily insights.")
+    st.radio("Appearance", ["Dark", "Light"], horizontal=True, key="ui_theme")
+st.markdown("Load inverter data to view daily energy, power-source activity and battery charging.")
 
 # Initialize session state for dataframe and date options
 if "df" not in st.session_state:
@@ -450,18 +490,18 @@ if "selected_date" not in st.session_state:
     st.session_state["selected_date"] = None
 
 # Option to choose data source - Default is Fetch from Drive for automatic latest-file loading
-with st.expander("📊 Data Source", expanded=False):
-    data_source = st.radio("Choose Data Source:", ["🔗 Google Sheet Link", "📁 Upload Excel File", "📂 Fetch from Drive"], horizontal=True, index=2)
+with st.expander("📊 Load Your Data", expanded=False):
+    data_source = st.radio("Choose a data source:", ["🔗 Google Sheet Link", "📁 Upload Excel File", "📂 Fetch from Drive"], horizontal=True, index=2)
 
     # Default Google Sheet URL (hardcoded)
     DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTy3qIf4XMXKwCzy4jhWksU5wm3KqYeqvFWVSusIehRxvn783TJwoBljQdkYiE5wETGaIsY_rSGl0P3/pub?output=xlsx"
 
     if data_source == "🔗 Google Sheet Link":
         # Google Sheet option - use hardcoded URL by default
-        use_custom_sheet = st.checkbox("Use different Google Sheet", value=False)
+        use_custom_sheet = st.checkbox("Use a different Google Sheet", value=False)
         
         if use_custom_sheet:
-            sheet_url = st.text_input("🔗 Enter Custom Google Sheet URL (Published to Web)", 
+            sheet_url = st.text_input("🔗 Google Sheet URL",
                                       placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?output=xlsx")
         else:
             sheet_url = DEFAULT_SHEET_URL
@@ -480,7 +520,7 @@ with st.expander("📊 Data Source", expanded=False):
         # Drive folder URL (pre-filled for convenience) and file id/filename input
         folder_url = st.text_input("📁 Drive Folder URL (optional)", value="https://drive.google.com/drive/folders/1dazVdDTcKTehgIe36jmP2uqNqkqAYPw5")
         drive_file = st.text_input("Enter Drive file URL, file id or filename (e.g. 17840308811634.xlsx)")
-        st.caption("Leave the file field blank to load the latest .xlsx/.xls file from the shared folder.")
+        st.caption("Leave the file name blank to load the newest spreadsheet in this folder.")
 
         fetch_drive_button = st.button("Fetch from Drive", key="fetch_drive_main")
         auto_fetch_drive = False
@@ -524,22 +564,22 @@ with st.expander("📊 Data Source", expanded=False):
                         st.session_state["df"] = read_excel_cached(drive_bytes)
                         st.success("Drive file loaded successfully ✅")
                     elif filename and folder_url:
-                        st.error("Could not locate the file id from the shared folder page. Please provide a direct shared file link or file id, or use the listing below to pick a file.")
+                        st.error("Could not find this spreadsheet. Check the file link and folder access, or choose it from the list below.")
                     else:
-                        st.error("Could not determine a Drive file id. Paste a full file URL or a valid Drive file id, or use the listing below to pick a file.")
+                        st.error("Could not find the spreadsheet. Check the Drive link or choose a file from the list below.")
             except Exception as e:
                 st.error(f"⚠️ Error loading from Drive: {e}")
 
         # If the file field is blank and a folder URL is provided, show a selectable listing + actions
         if st.session_state["df"] is None and not drive_file and folder_url:
-            st.markdown("**Available .xlsx/.xls files in folder (best-effort, public/shared folders only):**")
+            st.markdown("**Spreadsheets available in this shared folder:**")
             files = find_all_drive_files_in_folder_page(folder_url)
             if not files:
-                st.info("No files found using lightweight folder scraping. For reliable listing use a Drive service-account and the Drive API.")
+                st.info("No spreadsheets were found. Check the folder link and sharing permissions.")
             else:
                 # Display selectbox with friendly labels
                 display_names = [f"{name} — {fid}" if name and name != fid else fid for fid, name in files]
-                choice = st.selectbox("Select a file to Load or Delete:", options=list(range(len(display_names))), format_func=lambda i: display_names[i])
+                choice = st.selectbox("Choose a spreadsheet to load:", options=list(range(len(display_names))), format_func=lambda i: display_names[i])
                 selected_fid, selected_name = files[choice]
 
                 col_load = st.columns([1])[0]
@@ -553,7 +593,7 @@ with st.expander("📊 Data Source", expanded=False):
                             st.success(f"Loaded: {selected_name or selected_fid} ✅")
                         except Exception as e:
                             st.error(f"Failed to load selected file: {e}")
-                st.caption("Delete via Drive API removed. Use Google Drive web UI to manage files.")
+                st.caption("To delete a file, manage it in Google Drive.")
     else:
         # Upload Excel File option
         uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx", "xls"])
@@ -611,7 +651,6 @@ if df is not None:
     df["date"] = df[datetime_col].dt.date
     df["hour"] = df[datetime_col].dt.hour
 
-    st.success("File Loaded Successfully ✅")
     
     # ===== DATE FILTER (MUST BE BEFORE SIDEBAR) =====
     # Keep date navigation and the sidebar selector on the same selected value.
@@ -668,7 +707,7 @@ if df is not None:
         if is_prev_disabled:
             st.caption("No older dates available")
     with col_hdr_mid:
-        st.header(f"Date: {selected_date} — {date_index + 1}/{len(date_options)}")
+        st.header(f"Selected date: {selected_date} | Day {date_index + 1} of {len(date_options)}")
     with col_hdr_right:
         st.button("Newer ▶", key="inline_next_date", use_container_width=True, disabled=is_next_disabled, on_click=move_selected_date, args=(-1,))
         if is_next_disabled:
@@ -764,7 +803,7 @@ if df is not None:
         # Grid portion of load = total load - battery portion
         grid_portion_load = selected_day['load_kwh'] - selected_day['battery_kwh']
         
-        st.caption("Energy is shown in kWh (units). Solar and grid are energy from each source; load is what the home used.")
+        st.caption("Energy is in kWh. Solar and grid show energy supplied; home use shows energy consumed.")
         col_a, col_b, col_c, col_d, col_e = st.columns(5)
         col_a.metric("☀️ Solar energy", f"{selected_day['solar_kwh']:.2f} kWh", help="Estimated energy received from solar panels during this day.")
         col_b.metric("⚡ Grid energy", f"{selected_day['utility_kwh']:.2f} kWh", help="Estimated energy received from the electricity grid during this day.")
@@ -817,7 +856,7 @@ if df is not None:
                 battery_day,
                 x=datetime_col,
                 y=battery_voltage_col,
-                title="Battery voltage during the selected day",
+                title="Battery Voltage Throughout the Day",
                 markers=True,
                 labels={battery_voltage_col: "Battery voltage (V)", datetime_col: "Time"},
             )
@@ -871,7 +910,7 @@ if df is not None:
     fig_energy = px.bar(
         daily_energy_sorted, x='date', 
         y=['☀️ Solar', '⚡ Grid', '🏠 Load', '🔋 Battery'],
-        title="Daily energy: solar, grid, home use and battery",
+        title="Daily Energy by Source and Home Use",
         barmode='group',
         labels={'date': 'Date', 'value': 'Energy (kWh)', 'variable': 'Source or use'},
         color_discrete_map={
@@ -909,7 +948,7 @@ if df is not None:
         st.stop()
 
     # Option to view load as hourly average or row-wise
-    load_view_mode = st.radio("Load chart detail", ["Hourly average", "Every reading"], horizontal=True, index=1)
+    load_view_mode = st.radio("Show home power as:", ["Hourly average", "Each reading"], horizontal=True, index=1)
     
     # Sort data by datetime for row-wise view
     day_df_sorted_load = day_df.sort_values(datetime_col).reset_index(drop=True)
@@ -1226,7 +1265,7 @@ if df is not None:
         'Hours_Display': [f"{int(solar_time_hours)}h {int(round((solar_time_hours % 1) * 60))}m", f"{int(grid_time_hours)}h {int(round((grid_time_hours % 1) * 60))}m", f"{int(battery_time_hours)}h {int(round((battery_time_hours % 1) * 60))}m"],
         'Records': [len(solar_records), len(grid_records), len(battery_records)]
     })
-    fig_mode = px.bar(mode_data, x='Mode', y='Hours', title="Total Time in Each Mode.", color='Mode',
+    fig_mode = px.bar(mode_data, x='Mode', y='Hours', title="Hours Spent on Solar, Grid and Battery", color='Mode',
                       color_discrete_map={'☀️ Solar': '#FFD700', '⚡ Grid': '#1E90FF', '🔋 Battery': '#00CC96'})
     fig_mode.update_layout(yaxis_title="Hours", dragmode=False)
     
@@ -1252,14 +1291,14 @@ if df is not None:
         'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
     })
     
-    st.caption("These times estimate how long each power source was active, based on the readings in the file.")
+    st.caption("Estimated time spent using each power source, based on the readings in your file.")
     col1, col2, col3 = st.columns(3)
     col1.metric("☀️ Solar power time", f"{int(solar_time_hours)}h {int((solar_time_hours % 1) * 60)}m", help="Estimated time the inverter was using solar power.")
     col2.metric("⚡ Grid power time", f"{int(grid_time_hours)}h {int((grid_time_hours % 1) * 60)}m", help="Estimated time the inverter was using grid power.")
     col3.metric("🔋 Battery power time", f"{int(battery_time_hours)}h {int((battery_time_hours % 1) * 60)}m", help="Estimated time the load was being supplied by the battery.")
 
     # ===== BATTERY CHARGING ANALYSIS - Solar vs Grid =====
-    st.subheader("🔋 Battery Charging Analysis - Voltages Used for Charging")
+    st.subheader("🔋 Battery Charging")
     
     day_df_charge = day_df.sort_values(datetime_col).reset_index(drop=True).copy()
     
@@ -1312,7 +1351,7 @@ if df is not None:
         solar_charge_time = len(solar_charge_records) * time_per_row_hours
         grid_charge_time = len(grid_charge_records) * time_per_row_hours
         
-        st.markdown("### 🔌 Battery Charging Source")
+        st.markdown("### 🔌 Charging Time by Source")
         
         col_charge1, col_charge2, col_charge3 = st.columns(3)
         col_charge1.metric("☀️ Solar Charging Time", f"{int(solar_charge_time)}h {int((solar_charge_time % 1) * 60)}m")
@@ -1353,7 +1392,7 @@ if df is not None:
             else:
                 grid_charge_kwh = 0
             
-            st.markdown("### ⚡ Energy Used for Battery Charging")
+            st.markdown("### ⚡ Energy Used to Charge the Battery")
             
             col_en1, col_en2 = st.columns(2)
             col_en1.metric("☀️ Solar Energy to Battery", f"{solar_charge_kwh:.2f} kWh")
@@ -1382,7 +1421,7 @@ if df is not None:
         
    
     # ===== DUAL SUPPLY ANALYSIS - Solar + Grid Load Distribution =====
-    st.subheader("⚡ Dual Supply Analysis - Load Distribution")
+    st.subheader("⚡ When Solar and Grid Run Together")
     
     day_df_timeline = day_df.sort_values(datetime_col).reset_index(drop=True)
     day_df_dual = day_df_timeline.copy()
@@ -1433,7 +1472,7 @@ if df is not None:
     solar_contribution_kwh = (dual_records['pv_input_power_1'].sum() * time_per_row_hours / 1000) if len(dual_records) > 0 else 0
     grid_contribution_kwh = (dual_records['grid_power_input_active_total'].sum() * time_per_row_hours / 1000) if len(dual_records) > 0 else 0
     
-    st.markdown("### 📊 Power Source Distribution")
+    st.markdown("### 📊 Time by Power Source Combination")
     
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("☀️⚡ Solar+Grid", f"{format_duration(dual_time)}")
@@ -1637,10 +1676,10 @@ if df is not None:
         else:
             st.info("No dual supply periods found")
     else:
-        st.info("No time period found when both Solar and Grid were providing power together")
+        st.info("Solar and grid were not active together on this date.")
     
 # ===== MODE TIMELINE - Show Start Time and End Times for each period =====
-    with st.expander("🕐 Mode Timeline - Start & End Times", expanded=False):
+    with st.expander("🕐 Periods by Power Source", expanded=False):
     
         def get_mode(row):
             if row['grid_power_input_active_total'] > 0:
@@ -1716,7 +1755,7 @@ if df is not None:
         render_mode_periods(col_battery, "\U0001f50b Battery", "battery", battery_periods, battery_time_hours)
 
     # ===== OTHER SECTIONS (AT END - COLLAPSED BY DEFAULT) =====
-    with st.expander("🔋 Battery Status", expanded=False):
+    with st.expander("🔋 Battery Voltage Summary", expanded=False):
         full_battery = day_df[(day_df[voltage_col] >= 28.5)]
         col1, col2 = st.columns(2)
         col1.metric("Full Battery (≈100%)", f"{len(full_battery)} records - (V) ≥ 28.5V")
@@ -1725,7 +1764,7 @@ if df is not None:
         col2.metric("Low Battery (≈0-20%)", f"{len(low_battery)} records - (V) < 24V")
 
     # Performance Score
-    with st.expander("📊 Inverter Performance", expanded=False):
+    with st.expander("📊 Daily Reading Summary", expanded=False):
         # Battery mode now includes only records where load is running from battery
         battery_mode_time = len(battery_records)
         
@@ -1745,11 +1784,11 @@ if df is not None:
         )
 
     # Raw Data
-    with st.expander("View Raw Data", expanded=False):
+    with st.expander("View Readings for This Date", expanded=False):
         st.dataframe(day_df)
 
 else:
     # Clear date options when no data is loaded
     st.session_state["date_options"] = []
     st.session_state["selected_date"] = None
-    st.info("Please upload an Excel file or enter a Google Sheet link to begin analysis.")
+    st.info("Choose a spreadsheet in Load Your Data above to see the daily analysis.")
