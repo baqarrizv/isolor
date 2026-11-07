@@ -381,10 +381,8 @@ st.markdown("""
     /* Mobile-first responsive styles */
     @media (max-width: 768px) {
         .stApp,
-        .block-container,
         .stApp .main,
         section[data-testid="stSidebar"] {
-            padding: 0.5rem !important;
             margin: 0 auto !important;
             max-width: 100% !important;
             min-width: 0 !important;
@@ -411,9 +409,12 @@ st.markdown("""
         }
         div[data-testid="stMetricLabel"] {
             font-size: 0.8rem !important;
+            line-height: 1.25 !important;
+            white-space: normal !important;
+            overflow: visible !important;
         }
         div[data-testid="stMetricValue"] {
-            font-size: clamp(1.05rem, 4.5vw, 1.3rem) !important;
+            font-size: clamp(1rem, 4.2vw, 1.2rem) !important;
             line-height: 1.2 !important;
         }
         [data-testid="stButton"] button {
@@ -421,8 +422,49 @@ st.markdown("""
             min-height: 2.6rem;
         }
         .block-container {
+            padding-top: 0.75rem !important;
+            padding-bottom: 0.75rem !important;
             padding-left: 0.75rem !important;
             padding-right: 0.75rem !important;
+        }
+
+        [data-testid="stHorizontalBlock"] {
+            gap: 0.5rem !important;
+            flex-wrap: wrap !important;
+        }
+        [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+            box-sizing: border-box !important;
+            flex: 0 0 100% !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            margin-bottom: 0.35rem;
+        }
+        /* Keep the five daily energy cards in a compact, readable two-column grid. */
+        [data-testid="stHorizontalBlock"]:has(> [data-testid="column"]:nth-child(5)) > [data-testid="column"] {
+            flex: 0 0 calc(50% - 0.25rem) !important;
+            width: calc(50% - 0.25rem) !important;
+            max-width: calc(50% - 0.25rem) !important;
+        }
+        /* Put date navigation buttons side by side, with the date below them. */
+        [data-testid="stHorizontalBlock"]:has(h2) > [data-testid="column"]:nth-child(1) {
+            order: 1;
+            flex: 0 0 calc(50% - 0.25rem) !important;
+            width: calc(50% - 0.25rem) !important;
+            max-width: calc(50% - 0.25rem) !important;
+        }
+        [data-testid="stHorizontalBlock"]:has(h2) > [data-testid="column"]:nth-child(3) {
+            order: 2;
+            flex: 0 0 calc(50% - 0.25rem) !important;
+            width: calc(50% - 0.25rem) !important;
+            max-width: calc(50% - 0.25rem) !important;
+        }
+        [data-testid="stHorizontalBlock"]:has(h2) > [data-testid="column"]:nth-child(2) {
+            order: 3;
+        }
+        [data-testid="stMetric"] {
+            height: 100%;
+            padding: 0.6rem !important;
         }
     }
     
@@ -444,16 +486,8 @@ st.markdown("""
     div[data-testid="column"] {
         min-width: 0 !important;
     }
-    /* Additional responsive helpers (CSS-only) */
+    /* Additional responsive helpers */
     @media (max-width: 768px) {
-        [data-testid="stHorizontalBlock"] {
-            gap: 0.5rem !important;
-            flex-wrap: wrap !important;
-        }
-        div[data-testid="column"] {
-            width: 100% !important;
-            margin-bottom: 0.5rem;
-        }
         section[data-testid="stSidebar"] {
             width: min(85vw, 320px) !important;
             max-width: 85vw !important;
