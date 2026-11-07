@@ -1628,43 +1628,25 @@ if df is not None:
         battery_periods = find_continuous_periods(day_df_timeline, 'battery')
         
         col_solar, col_grid, col_battery = st.columns(3)
-        
-        with col_solar:
-            st.markdown("#### ☀️ Solar")
-            if solar_periods:
-                for i, p in enumerate(solar_periods):
+
+        def render_mode_periods(column, title, mode_name, periods, total_hours):
+            with column:
+                st.markdown(f"#### {title}")
+                if not periods:
+                    st.info(f"No {mode_name} period")
+                    return
+
+                for i, period in enumerate(periods):
                     st.write(f"**Period {i+1}:**")
-                    st.write(f"⏰ {format_time(p['start'])} - {format_time(p['end'])}")
-                    st.write(f"⏱️ Duration: {format_duration(p['duration_hours'])}")
+                    st.write(f"\U000023f0 {format_time(period['start'])} - {format_time(period['end'])}")
+                    st.write(f"\U000023f1\ufe0f Duration: {format_duration(period['duration_hours'])}")
                     st.divider()
-                st.success(f"Total: {format_duration(solar_time_hours)}")
-            else:
-                st.info("No solar period")
-        
-        with col_grid:
-            st.markdown("#### ⚡ Grid")
-            if grid_periods:
-                for i, p in enumerate(grid_periods):
-                    st.write(f"**Period {i+1}:**")
-                    st.write(f"⏰ {format_time(p['start'])} - {format_time(p['end'])}")
-                    st.write(f"⏱️ Duration: {format_duration(p['duration_hours'])}")
-                    st.divider()
-                st.success(f"Total: {format_duration(grid_time_hours)}")
-            else:
-                st.info("No grid period")
-        
-        with col_battery:
-            st.markdown("#### 🔋 Battery")
-            if battery_periods:
-                for i, p in enumerate(battery_periods):
-                    st.write(f"**Period {i+1}:**")
-                    st.write(f"⏰ {format_time(p['start'])} - {format_time(p['end'])}")
-                    st.write(f"⏱️ Duration: {format_duration(p['duration_hours'])}")
-                    st.divider()
-                st.success(f"Total: {format_duration(battery_time_hours)}")
-            else:
-                st.info("No battery period")
-    
+                st.success(f"Total: {format_duration(total_hours)}")
+
+        render_mode_periods(col_solar, "\u2600\ufe0f Solar", "solar", solar_periods, solar_time_hours)
+        render_mode_periods(col_grid, "\u26a1 Grid", "grid", grid_periods, grid_time_hours)
+        render_mode_periods(col_battery, "\U0001f50b Battery", "battery", battery_periods, battery_time_hours)
+
     # ===== OTHER SECTIONS (AT END - COLLAPSED BY DEFAULT) =====
     with st.expander("🔋 Battery Status", expanded=False):
         full_battery = day_df[(day_df[voltage_col] >= 28.5)]
