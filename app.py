@@ -34,6 +34,42 @@ def move_selected_date(step):
     st.session_state["selected_date_widget"] = options[target_index]
 
 
+def build_hover_customdata(df, value_cols, work_mode_col=None):
+    """Hover data for a chart: one tuple per row, numbers as '12.34'
+    (blank readings shown as 0.00), then the work mode text if given.
+
+    Same output as looping over df.iterrows(), but done column by column.
+    """
+    columns = []
+    for col in value_cols:
+        columns.append(df[col].where(df[col].notna(), 0).map("{:.2f}".format).tolist())
+    if work_mode_col:
+        columns.append(df[work_mode_col].map(str).tolist())
+    if not columns:
+        return [() for _ in range(len(df))]
+    return list(zip(*columns))
+
+
+def _reading_or_zero(df, col):
+    """Whole-column version of `row.get(col, 0) or 0`: a missing column counts
+    as 0, blank (NaN) readings stay blank. Returns None for non-number columns,
+    so the caller can fall back to the row-by-row rule."""
+    if col not in df.columns:
+        return pd.Series(0, index=df.index)
+    series = df[col]
+    if not pd.api.types.is_numeric_dtype(series):
+        return None
+    return series
+
+
+def classify_rows(df, conditions, labels, default, fallback):
+    """Label every row with the first matching condition (np.select), or run the
+    original row-by-row `fallback` when any input column is not numeric."""
+    if conditions is None:
+        return df.apply(fallback, axis=1)
+    return pd.Series(np.select(conditions, labels, default=default), index=df.index, dtype=object)
+
+
 from drive_loader import (
     find_drive_file_id_in_folder_page,
     find_first_drive_file_in_folder_page,
@@ -599,13 +635,13 @@ if df is not None:
     is_next_disabled = date_index <= 0
 
     with col_hdr_left:
-        st.button("◀ Older", key="inline_prev_date", use_container_width=True, disabled=is_prev_disabled, on_click=move_selected_date, args=(1,))
+        st.button("◀ Older", key="inline_prev_date", width="stretch", disabled=is_prev_disabled, on_click=move_selected_date, args=(1,))
         if is_prev_disabled:
             st.caption("No older dates available")
     with col_hdr_mid:
         st.header(f"Selected date: {selected_date} | Day {date_index + 1} of {len(date_options)}")
     with col_hdr_right:
-        st.button("Newer ▶", key="inline_next_date", use_container_width=True, disabled=is_next_disabled, on_click=move_selected_date, args=(-1,))
+        st.button("Newer ▶", key="inline_next_date", width="stretch", disabled=is_next_disabled, on_click=move_selected_date, args=(-1,))
         if is_next_disabled:
             st.caption("No newer dates available")
 
@@ -732,7 +768,7 @@ if df is not None:
         )
         fig_pie.update_layout(dragmode=False)
         # Make chart responsive for mobile
-        st.plotly_chart(fig_pie, use_container_width=True, theme=None, config={
+        st.plotly_chart(fig_pie, width="stretch", theme=None, config={
             'responsive': True,
             'displayModeBar': False,
             'scrollZoom': False,
@@ -762,7 +798,7 @@ if df is not None:
             fig_battery_voltage.update_layout(dragmode=False)
             st.plotly_chart(
                 fig_battery_voltage,
-                use_container_width=True,
+                width="stretch",
                 theme=None,
                 config={"responsive": True, "displayModeBar": False, "scrollZoom": False},
             )
@@ -916,21 +952,13 @@ if df is not None:
         load_hover += f"<b>Time</b>: %{{x}}"
         
         # Prepare customdata
-        load_customdata = []
-        for _, row in day_df_sorted_load.iterrows():
-            row_data = []
-            for col in display_cols_load:
-                val = row[col] if pd.notna(row[col]) else 0
-                row_data.append(f"{val:.2f}")
-            if work_mode_col_load:
-                row_data.append(str(row[work_mode_col_load]))
-            load_customdata.append(tuple(row_data))
+        load_customdata = build_hover_customdata(day_df_sorted_load, display_cols_load, work_mode_col_load)
         
         fig_load.update_traces(hovertemplate=load_hover, customdata=load_customdata)
         fig_load.update_layout(hovermode='closest', hoverdistance=-1, dragmode=False)
     
     # Make chart responsive for mobile
-    st.plotly_chart(fig_load, use_container_width=True, theme=None, config={
+    st.plotly_chart(fig_load, width="stretch", theme=None, config={
         'responsive': True,
         'displayModeBar': False,
         'scrollZoom': False,
@@ -1029,21 +1057,13 @@ if df is not None:
     voltage_hover += f"<b>Time</b>: %{{x}}"
     
     # Prepare customdata
-    voltage_customdata = []
-    for _, row in day_df_sorted.iterrows():
-        row_data = []
-        for col in hover_cols_for_voltage:
-            val = row[col] if pd.notna(row[col]) else 0
-            row_data.append(f"{val:.2f}")
-        if work_mode_col:
-            row_data.append(str(row[work_mode_col]))
-        voltage_customdata.append(tuple(row_data))
+    voltage_customdata = build_hover_customdata(day_df_sorted, hover_cols_for_voltage, work_mode_col)
     
     fig_voltage.update_traces(hovertemplate=voltage_hover, customdata=voltage_customdata)
     fig_voltage.update_layout(hovermode='closest', hoverdistance=-1, dragmode=False)
     
     # Make chart responsive for mobile
-    st.plotly_chart(fig_voltage, use_container_width=True, theme=None, config={
+    st.plotly_chart(fig_voltage, width="stretch", theme=None, config={
         'responsive': True,
         'displayModeBar': False,
         'scrollZoom': False,
@@ -1085,21 +1105,13 @@ if df is not None:
     ac_hover += f"<b>Time</b>: %{{x}}"
     
     # Prepare customdata
-    ac_customdata = []
-    for _, row in day_df_sorted.iterrows():
-        row_data = []
-        for col in hover_cols_for_ac:
-            val = row[col] if pd.notna(row[col]) else 0
-            row_data.append(f"{val:.2f}")
-        if work_mode_col:
-            row_data.append(str(row[work_mode_col]))
-        ac_customdata.append(tuple(row_data))
+    ac_customdata = build_hover_customdata(day_df_sorted, hover_cols_for_ac, work_mode_col)
     
     fig_main.update_traces(hovertemplate=ac_hover, customdata=ac_customdata)
     fig_main.update_layout(hovermode='closest', hoverdistance=-1, dragmode=False)
     
     # Make chart responsive for mobile
-    st.plotly_chart(fig_main, use_container_width=True, theme=None, config={
+    st.plotly_chart(fig_main, width="stretch", theme=None, config={
         'responsive': True,
         'displayModeBar': False,
         'scrollZoom': False,
@@ -1172,7 +1184,7 @@ if df is not None:
         trace.hovertemplate = f'<b>{mode_data["Mode"].iloc[i]}</b><br>Time: {mode_data["Hours_Display"].iloc[i]}<br>Records: {mode_data["Records"].iloc[i]}<extra></extra>'
     
     # Make chart responsive for mobile
-    st.plotly_chart(fig_mode, use_container_width=True, theme=None, config={
+    st.plotly_chart(fig_mode, width="stretch", theme=None, config={
         'responsive': True,
         'displayModeBar': False,
         'scrollZoom': False,
@@ -1180,7 +1192,7 @@ if df is not None:
     })
 
     # Render after the selected-day mode chart, as requested.
-    st.plotly_chart(fig_energy, use_container_width=True, theme=None, config={
+    st.plotly_chart(fig_energy, width="stretch", theme=None, config={
         'responsive': True,
         'displayModeBar': False,
         'scrollZoom': False,
@@ -1238,7 +1250,27 @@ if df is not None:
                 else:
                     return 'not_charging'
         
-        day_df_charge['charging_source'] = day_df_charge.apply(classify_charging_source, axis=1)
+        solar_v = _reading_or_zero(day_df_charge, 'pv_input_power_1')
+        grid_v = _reading_or_zero(day_df_charge, 'grid_power_input_active_total')
+        if charging_current_col:
+            current_v = _reading_or_zero(day_df_charge, charging_current_col)
+            if solar_v is None or grid_v is None or current_v is None:
+                charge_conditions = None
+            else:
+                charging = current_v > 0
+                charge_conditions = [charging & (solar_v > 0), charging & (grid_v > 0),
+                                     charging & (solar_v == 0) & (grid_v == 0)]
+        else:
+            diff_v = _reading_or_zero(day_df_charge, 'battery_voltage_diff')
+            if solar_v is None or grid_v is None or diff_v is None:
+                charge_conditions = None
+            else:
+                rising = diff_v > 0.1
+                charge_conditions = [rising & (solar_v > 0), rising & (grid_v > 0), rising]
+        day_df_charge['charging_source'] = classify_rows(
+            day_df_charge, charge_conditions,
+            ['solar_charging', 'grid_charging', 'other_charging'], 'not_charging',
+            classify_charging_source)
         
         solar_charge_records = day_df_charge[day_df_charge['charging_source'] == 'solar_charging']
         grid_charge_records = day_df_charge[day_df_charge['charging_source'] == 'grid_charging']
@@ -1269,7 +1301,7 @@ if df is not None:
             color_discrete_map={'☀️ Solar': '#FFD700', '⚡ Grid': '#1E90FF', '❓ Other': '#888888'}
         )
         fig_charge_mode.update_layout(yaxis_title="Hours", dragmode=False)
-        st.plotly_chart(fig_charge_mode, use_container_width=True, theme=None, config={
+        st.plotly_chart(fig_charge_mode, width="stretch", theme=None, config={
             'responsive': True,
             'displayModeBar': False,
             'scrollZoom': False,
@@ -1306,7 +1338,7 @@ if df is not None:
             )
             fig_charge_energy.update_traces(textposition='inside', textinfo='percent+label')
             fig_charge_energy.update_layout(dragmode=False)
-            st.plotly_chart(fig_charge_energy, use_container_width=True, theme=None, config={
+            st.plotly_chart(fig_charge_energy, width="stretch", theme=None, config={
                 'responsive': True,
                 'displayModeBar': False,
                 'scrollZoom': False,
@@ -1348,7 +1380,23 @@ if df is not None:
         else:
             return 'other'
     
-    day_df_dual['power_source'] = day_df_dual.apply(classify_power_source, axis=1)
+    solar_v = _reading_or_zero(day_df_dual, 'pv_input_power_1')
+    grid_v = _reading_or_zero(day_df_dual, 'grid_power_input_active_total')
+    load_v = _reading_or_zero(day_df_dual, 'ac_output_active_power_total')
+    if solar_v is None or grid_v is None or load_v is None:
+        source_conditions = None
+    else:
+        source_conditions = [
+            load_v == 0,
+            (solar_v > 0) & (grid_v > 0),
+            (solar_v > 0) & (grid_v == 0),
+            (grid_v > 0) & (solar_v == 0),
+            (solar_v == 0) & (grid_v == 0) & (load_v > 0),
+        ]
+    day_df_dual['power_source'] = classify_rows(
+        day_df_dual, source_conditions,
+        ['idle', 'solar_grid', 'solar_only', 'grid_only', 'battery_only'], 'other',
+        classify_power_source)
     
     dual_records = day_df_dual[day_df_dual['power_source'] == 'solar_grid']
     solar_only_records = day_df_dual[day_df_dual['power_source'] == 'solar_only']
@@ -1487,7 +1535,7 @@ if df is not None:
                 }
             )
             fig_dual.update_layout(yaxis_title="Units", dragmode=False)
-            st.plotly_chart(fig_dual, use_container_width=True, theme=None, config={
+            st.plotly_chart(fig_dual, width="stretch", theme=None, config={
                 'responsive': True,
                 'displayModeBar': False,
                 'scrollZoom': False,
@@ -1506,7 +1554,7 @@ if df is not None:
                 }
             )
             fig_battery_charge.update_layout(yaxis_title="Units", dragmode=False)
-            st.plotly_chart(fig_battery_charge, use_container_width=True, theme=None, config={
+            st.plotly_chart(fig_battery_charge, width="stretch", theme=None, config={
                 'responsive': True,
                 'displayModeBar': False,
                 'scrollZoom': False,
@@ -1523,7 +1571,7 @@ if df is not None:
                     
                     charge_timeline = all_charge_records[[datetime_col, battery_voltage_col, 'charging_source']].copy()
                     charge_timeline['Time'] = charge_timeline[datetime_col].dt.strftime('%H:%M')
-                    st.dataframe(charge_timeline[['Time', battery_voltage_col, 'charging_source']], use_container_width=True)
+                    st.dataframe(charge_timeline[['Time', battery_voltage_col, 'charging_source']], width="stretch")
                 else:
                     st.info("No battery charging detected")
 
@@ -1587,7 +1635,13 @@ if df is not None:
             else:
                 return 'idle'
         
-        day_df_timeline['mode'] = day_df_timeline.apply(get_mode, axis=1)
+        mode_cols = ['grid_power_input_active_total', 'pv_input_power_1', 'ac_output_active_power_total']
+        if all(c in day_df_timeline.columns and pd.api.types.is_numeric_dtype(day_df_timeline[c]) for c in mode_cols):
+            mode_conditions = [day_df_timeline[c] > 0 for c in mode_cols]
+        else:
+            mode_conditions = None
+        day_df_timeline['mode'] = classify_rows(
+            day_df_timeline, mode_conditions, ['grid', 'solar', 'battery'], 'idle', get_mode)
         
         def find_continuous_periods(df, mode):
             mode_df = df[df['mode'] == mode].copy()
