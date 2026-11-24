@@ -89,7 +89,192 @@ def find_drive_file_id_in_folder_page(folder_url, filename):
     return None
 
 
+EXCEL_EXTENSIONS = (".xlsx", ".xls")
+
+
+def get_drive_folder_id(folder_url):
+    """Pull the folder id out of a Drive folder link (or accept a bare id)."""
+    if not folder_url:
+        return None
+    folder_url = folder_url.strip()
+    m = re.search(r"/folders/([a-zA-Z0-9_-]{10,})", folder_url)
+    if m:
+        return m.group(1)
+    m = re.search(r"[?&]id=([a-zA-Z0-9_-]{10,})", folder_url)
+    if m:
+        return m.group(1)
+    if re.fullmatch(r"[a-zA-Z0-9_-]{10,}", folder_url):
+        return folder_url
+    return None
+
+
+def get_google_api_key():
+    """API key for the Drive API, from Streamlit secrets or the environment."""
+    try:
+        key = st.secrets.get("GOOGLE_API_KEY")
+        if key:
+            return key
+    except Exception:
+        pass
+    return os.environ.get("GOOGLE_API_KEY")
+
+
+def _filename_number(name):
+    """Numeric part of a name like 17840308811634.xlsx, used to break ties."""
+    digits = re.sub(r"\D", "", name or "")
+    return int(digits) if digits else -1
+
+
+def _list_drive_files_with_api(folder_id, api_key):
+    """Drive API v3: exact modifiedTime for every spreadsheet in a public folder."""
+    files = []
+    page_token = None
+    while True:
+        params = {
+            "q": f"'{folder_id}' in parents and trashed = false",
+            "orderBy": "modifiedTime desc",
+            "fields": "nextPageToken, files(id, name, modifiedTime)",
+            "pageSize": 1000,
+            "supportsAllDrives": "true",
+            "includeItemsFromAllDrives": "true",
+            "key": api_key,
+        }
+        if page_token:
+            params["pageToken"] = page_token
+        resp = requests.get("https://www.googleapis.com/drive/v3/files", params=params, timeout=20)
+        resp.raise_for_status()
+        data = resp.json()
+        for f in data.get("files", []):
+            if f.get("name", "").lower().endswith(EXCEL_EXTENSIONS):
+                ts = pd.to_datetime(f.get("modifiedTime"), utc=True, errors="coerce")
+                files.append((f["id"], f["name"], None if pd.isna(ts) else ts))
+        page_token = data.get("nextPageToken")
+        if not page_token:
+            break
+    return files
+
+
+def _parse_embedded_modified(text):
+    """Turn the embedded folder view's 'last modified' text into a timestamp.
+
+    Drive shows a time (e.g. '1:35 PM') for files changed today, 'Nov 20' for
+    this year, and 'Mar 26, 2024' or '3/26/24' for older files.
+    """
+    text = (text or "").strip()
+    if not text:
+        return None
+    now = pd.Timestamp.now()
+    for fmt in ("%I:%M %p", "%H:%M"):
+        try:
+            t = pd.to_datetime(text, format=fmt)
+            return now.normalize() + pd.Timedelta(hours=t.hour, minutes=t.minute)
+        except Exception:
+            pass
+    for fmt in ("%b %d, %Y", "%d %b %Y", "%m/%d/%y", "%m/%d/%Y", "%Y-%m-%d"):
+        try:
+            return pd.to_datetime(text, format=fmt)
+        except Exception:
+            pass
+    for fmt in ("%b %d", "%d %b"):
+        try:
+            t = pd.to_datetime(f"{text} {now.year}", format=f"{fmt} %Y")
+            if t > now:
+                t = t.replace(year=now.year - 1)
+            return t
+        except Exception:
+            pass
+    return None
+
+
+def _list_drive_files_embedded(folder_id):
+    """No-key fallback: the public embedded folder view lists 'last modified'."""
+    resp = requests.get(
+        "https://drive.google.com/embeddedfolderview",
+        params={"id": folder_id},
+        timeout=20,
+        headers={"Accept-Language": "en-US,en;q=0.9"},
+    )
+    resp.raise_for_status()
+    html = resp.text
+    files = []
+    for block in re.split(r'<div class="flip-entry"', html)[1:]:
+        id_m = re.search(r'id="entry-([a-zA-Z0-9_-]{10,})"', block)
+        name_m = re.search(r'class="flip-entry-title">([^<]+)<', block)
+        mod_m = re.search(r'class="flip-entry-last-modified"><div>([^<]*)<', block)
+        if not id_m or not name_m:
+            continue
+        name = name_m.group(1).strip()
+        if not name.lower().endswith(EXCEL_EXTENSIONS):
+            continue
+        files.append((id_m.group(1), name, _parse_embedded_modified(mod_m.group(1) if mod_m else "")))
+    return files
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def list_drive_files_by_time(folder_url):
+    """All spreadsheets in a Drive folder, newest first.
+
+    Returns (files, method) where files is a list of (id, name, modified) and
+    modified may be None when Drive did not give a time. Uses the Drive API when
+    a GOOGLE_API_KEY is set, otherwise the public embedded folder view, and
+    falls back to the old folder-page scrape. Ties (same minute, or no time)
+    are broken by the number in the file name, highest first.
+    """
+    folder_id = get_drive_folder_id(folder_url)
+    files, method = [], None
+
+    if folder_id:
+        api_key = get_google_api_key()
+        if api_key:
+            try:
+                files = _list_drive_files_with_api(folder_id, api_key)
+                method = "Drive API (modified time)"
+            except Exception:
+                files = []
+        if not files:
+            try:
+                files = _list_drive_files_embedded(folder_id)
+                method = "Drive folder view (modified time)"
+            except Exception:
+                files = []
+
+    if not files:
+        files = [(fid, name, None) for fid, name in find_all_drive_files_in_folder_page(folder_url)]
+        method = "folder page (file name order)"
+
+    oldest = pd.Timestamp.min.tz_localize("UTC")
+
+    def sort_key(item):
+        ts = item[2]
+        if ts is None:
+            ts = oldest
+        elif ts.tzinfo is None:
+            ts = ts.tz_localize("UTC")
+        return (ts, _filename_number(item[1]))
+
+    files.sort(key=sort_key, reverse=True)
+    return files, method
+
+
+def format_drive_time(ts):
+    """Show a Drive modified time in Pakistan time when it carries a timezone."""
+    try:
+        if ts.tzinfo is not None:
+            ts = ts.tz_convert("Asia/Karachi")
+        return ts.strftime("%d %b %Y %I:%M %p")
+    except Exception:
+        return str(ts)
+
+
 def find_latest_drive_file_in_folder_page(folder_url):
+    """Newest spreadsheet in the folder by modified time: (id, name)."""
+    files, _ = list_drive_files_by_time(folder_url)
+    if files:
+        return files[0][0], files[0][1]
+    return _find_first_drive_file_in_folder_page(folder_url)
+
+
+def _find_first_drive_file_in_folder_page(folder_url):
     try:
         response = requests.get(folder_url)
         response.raise_for_status()
@@ -581,10 +766,20 @@ with st.expander("📊 Load Your Data", expanded=False):
 
                     # Try latest-file heuristic if no id/filename provided and folder is given
                     if file_id is None and not filename and folder_url:
-                        fid, fname = find_latest_drive_file_in_folder_page(folder_url)
-                        if fid:
+                        if fetch_drive_button:
+                            # Manual fetch: re-read the folder instead of the 60-second cached listing
+                            list_drive_files_by_time.clear()
+                        drive_files, list_method = list_drive_files_by_time(folder_url)
+                        if drive_files:
+                            fid, fname, fmod = drive_files[0]
                             file_id = fid
-                            st.info(f"Loading latest file from folder: {fname}")
+                            when = f" (modified {format_drive_time(fmod)})" if fmod is not None else ""
+                            st.info(f"Loading latest file from folder: {fname}{when} — by {list_method}")
+                        else:
+                            fid, fname = _find_first_drive_file_in_folder_page(folder_url)
+                            if fid:
+                                file_id = fid
+                                st.info(f"Loading first file found in folder: {fname}")
 
                     # If filename supplied, try to find its id in the folder page
                     if file_id is None and filename and folder_url:
@@ -607,12 +802,18 @@ with st.expander("📊 Load Your Data", expanded=False):
         # If the file field is blank and a folder URL is provided, show a selectable listing + actions
         if st.session_state["df"] is None and not drive_file and folder_url:
             st.markdown("**Spreadsheets available in this shared folder:**")
-            files = find_all_drive_files_in_folder_page(folder_url)
+            timed_files, _ = list_drive_files_by_time(folder_url)
+            files = [(fid, name) for fid, name, _ in timed_files]
             if not files:
                 st.info("No spreadsheets were found. Check the folder link and sharing permissions.")
             else:
-                # Display selectbox with friendly labels
-                display_names = [f"{name} — {fid}" if name and name != fid else fid for fid, name in files]
+                # Display selectbox with friendly labels, newest first
+                display_names = []
+                for fid, name, fmod in timed_files:
+                    label = name if name and name != fid else fid
+                    if fmod is not None:
+                        label += f" — {format_drive_time(fmod)}"
+                    display_names.append(label)
                 choice = st.selectbox("Choose a spreadsheet to load:", options=list(range(len(display_names))), format_func=lambda i: display_names[i])
                 selected_fid, selected_name = files[choice]
 
